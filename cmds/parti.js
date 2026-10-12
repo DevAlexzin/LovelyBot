@@ -15,7 +15,7 @@ export default {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
-      // 2. Extraemos el nombre del usuario
+      // 2. Extraemos el nombre del usuario (SIN el comando)
       let textoCompleto = msg.text || msg.body || '';
       const textoUsuario = textoCompleto
         .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
@@ -28,18 +28,13 @@ export default {
       // 3. Obtenemos la fecha de hoy para saber en qué semana estamos
       const ahora = new Date();
       const año = ahora.getFullYear();
-      // Cálculo de la semana del año
       const inicioAño = new Date(año, 0, 1);
       const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
       const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
 
-      // 4. Leemos la configuración del chat (aquí guardaremos la participación)
+      // 4. Leemos la configuración del chat
       const chatData = await db.getChat(msg.chat);
-      
-      // La clave donde guardaremos los datos de esta semana
       const dbKey = `participacion_semana_${año}_${semana}`;
-      
-      // Si no existe la lista, la creamos vacía
       let registros = chatData[dbKey] || [];
 
       // 5. Verificamos si el usuario ya está anotado
@@ -57,13 +52,18 @@ export default {
         fecha: ahora.toISOString()
       });
 
-      // 7. Guardamos en la base de datos del chat
+      // 7. Guardamos en la base de datos
       await db.updateChat(msg.chat, dbKey, registros);
 
-      // 8. Construimos el mensaje con todos los registros
+      // 8. Construimos la lista LIMPIANDO cualquier comando que se haya guardado antes
       let listaParticipantes = '';
       for (const reg of registros) {
-        listaParticipantes += `┈ꕤ // ${reg.nombre}\n`;
+        // ✅ Limpiamos el nombre por si tiene algún comando pegado
+        const nombreLimpio = reg.nombre
+          .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+          .trim();
+        
+        listaParticipantes += `┈ꕤ // ${nombreLimpio}\n`;
       }
 
       const participacionMsg = `‧₊ ᵎᵎ 𖤓🏹 𝗣𝗮𝗿𝘁𝗶𝗰𝗶𝗽𝗮𝗰𝗶𝗼𝗻 𝘀𝗲𝗺𝗮𝗻𝗮𝗹
