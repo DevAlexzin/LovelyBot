@@ -1,16 +1,12 @@
 import db from "#db"
 
 export default {
-  command: ['todos', 'all', 'tagall'],
+  command: ['everyone', 'all', 'tagall', 'todos'],
   category: 'grupo',
   isAdmin: true,
   botAdmin: true,
 
   run: async ({ msg, sock }) => {
-    console.log("========================================");
-    console.log("🔍 [DEBUG] Comando 'everyone' ejecutado.");
-    console.log("========================================");
-
     try {
       // ✅ Verificamos que sea un grupo
       if (!msg.isGroup) {
@@ -29,12 +25,16 @@ export default {
 
       const totalMembers = mentions.length;
 
-      // ✅ Texto opcional que el usuario escriba después del comando
+      // ✅ Obtenemos el texto del mensaje
       let textoCompleto = msg.text || msg.body || '';
-      // Quitamos el comando para obtener solo el texto del usuario
-      const textoUsuario = textoCompleto.replace(/^[.\/!#]?(everyone|all|tagall)\s*/i, '').trim();
+      
+      // ✅ Quitamos CUALQUIER comando conocido al inicio (con o sin prefijo)
+      // Esto elimina: .todos, /todos, !todos, #todos, .everyone, .all, .tagall, etc.
+      const textoUsuario = textoCompleto
+        .replace(/^[.\/!#]?(everyone|all|tagall|todos)\s*/i, '')
+        .trim();
 
-      // Construimos el mensaje con la estructura de plantillas correcta
+      // Construimos el mensaje
       let tagText = `╭─〔 👥 ETIQUETANDO A TODOS 〕─⬣\n`;
       tagText += `│ 👤 Integrantes: ${totalMembers}\n`;
       tagText += `╰────────────────⬣\n\n`;
@@ -43,13 +43,12 @@ export default {
         tagText += `➤ @${user.split('@')[0]}\n`;
       }
 
-      // Si el usuario escribió un mensaje, lo ponemos arriba
-      const finalText = textoUsuario
+      // ✅ Si el usuario escribió algo DESPUÉS del comando, lo ponemos arriba.
+      // Si no escribió nada, solo mostramos las etiquetas.
+      const finalText = textoUsuario.length > 0
         ? `${textoUsuario}\n\n${tagText}`
         : tagText;
 
-      console.log("📤 [DEBUG] Enviando mensaje con menciones...");
-      
       await sock.sendMessage(
         msg.chat,
         {
@@ -61,13 +60,8 @@ export default {
         }
       );
 
-      console.log("✅ [DEBUG] Mensaje enviado con éxito.");
-
     } catch (e) {
-      console.error("❌ [ERROR CRÍTICO] Fallo en el comando everyone:");
-      console.error("   - Mensaje de error:", e.message);
-      console.error("   - Stack trace:", e.stack);
-      
+      console.error("❌ Error en everyone:", e.message);
       msg.reply(msgglobal);
     }
   }
