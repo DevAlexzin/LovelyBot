@@ -3,7 +3,7 @@ import db from "#db"
 export default {
   command: ['vg', 'versusganado'],
   category: 'grupo',
-  botAdmin: true,
+  botAdmin: false,
   run: async ({ msg, sock }) => {
     console.log("========================================");
     console.log("🔍 [DEBUG] Comando 'vg' ejecutado.");
