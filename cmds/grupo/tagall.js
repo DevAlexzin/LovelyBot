@@ -1,7 +1,7 @@
 import db from "#db"
 
 export default {
-  command: ['everyone', 'all', 'tagall'],
+  command: ['todos', 'all', 'tagall'],
   category: 'grupo',
   isAdmin: true,
   botAdmin: true,
