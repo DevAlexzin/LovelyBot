@@ -28,13 +28,21 @@ export default {
       // 3. Obtenemos la fecha de hoy para saber en qué semana estamos
       const ahora = new Date();
       const año = ahora.getFullYear();
-      const semana = Math.ceil(((ahora - new Date(año, 0, 1)) / 86400000 + new Date(año, 0, 1).getDay() + 1) / 7);
+      // Cálculo de la semana del año
+      const inicioAño = new Date(año, 0, 1);
+      const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
+      const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
 
-      // 4. Leemos la base de datos (si no existe, la creamos vacía)
-      const dbKey = `participacion_${msg.chat}_${año}_semana${semana}`;
-      let registros = await db.get(dbKey) || [];
+      // 4. Leemos la configuración del chat (aquí guardaremos la participación)
+      const chatData = await db.getChat(msg.chat);
+      
+      // La clave donde guardaremos los datos de esta semana
+      const dbKey = `participacion_semana_${año}_${semana}`;
+      
+      // Si no existe la lista, la creamos vacía
+      let registros = chatData[dbKey] || [];
 
-      // 5. Verificamos si el usuario ya está anotado (para no duplicar)
+      // 5. Verificamos si el usuario ya está anotado
       const usuarioId = msg.sender.split('@')[0];
       const yaAnotado = registros.find(r => r.id === usuarioId);
 
@@ -49,8 +57,8 @@ export default {
         fecha: ahora.toISOString()
       });
 
-      // 7. Guardamos en la base de datos
-      await db.set(dbKey, registros);
+      // 7. Guardamos en la base de datos del chat
+      await db.updateChat(msg.chat, dbKey, registros);
 
       // 8. Construimos el mensaje con todos los registros
       let listaParticipantes = '';
