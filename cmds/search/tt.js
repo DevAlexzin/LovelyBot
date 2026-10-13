@@ -4,31 +4,31 @@ import fetch from 'node-fetch';
 export default {
   command: ['tiktoksearch', 'ttsearch', 'tts'],
   category: 'search',
-  run: async ({ msg, sock, args }) => {
-    const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net'
-    const botSettings = await db.getSettings(botId)
-    const banner = botSettings.icon
-
-    if (!args || !args.length) {
-      return sock.reply(
-        msg.chat,
-        `✿ Ingresa un término de búsqueda.`,
-        msg,
-      )
-    }
-
-    const query = args.join(' ')
-    const url = `${api.url}/search/tiktok?query=${query}&key=${api.key}`
-
+  run: async ({ msg, sock }) => {
     try {
-      const res = await fetch(url)
-      const json = await res.json()
+      // Extraemos el texto del mensaje (después del comando)
+      let textoCompleto = msg.text || msg.body || '';
+      const query = textoCompleto
+        .replace(/^[.\/!#]?(tiktoksearch|ttsearch|tts)\s*/i, '')
+        .trim();
 
-      if (!json || !json.data || !json.data.length) {
-        return sock.reply(msg.chat, `✿ No se encontraron resultados para "${query}".`, msg)
+      if (!query) {
+        return msg.reply(`✿ Ingresa un término de búsqueda.\n\n*Ejemplo:* \`.tts gatitos\``);
       }
 
-      let message = ``
+      const url = `${api.url}/search/tiktok?query=${query}&key=${api.key}`;
+
+      console.log(`🔍 [TTS] Buscando: ${query}`);
+
+      const res = await fetch(url);
+      const json = await res.json();
+
+      if (!json || !json.data || !json.data.length) {
+        return msg.reply(`✿ No se encontraron resultados para "${query}".`);
+      }
+
+      let message = `🔍 *Resultados de TikTok para:* _${query}_\n\n`;
+
       json.data.forEach((result, index) => {
         message += `➩ *Título ›* ${result.title}
 
@@ -42,11 +42,15 @@ export default {
 𖹭  ׄ  ְ ❑ *URL ›* https://www.tiktok.com/@${result.author.unique_id}/video/${result.id}
 
 ${index < json.data.length - 1 ? '╾۪〬─ ┄۫╌ ׄ┄┈۪ ─〬 ׅ┄╌ ۫┈ ─ׄ─۪〬 ┈ ┄۫╌ ┈┄۪ ─ׄ〬╼' : ''}
-        `
-      })
-      await msg.reply(message)
+        `;
+      });
+
+      // ✅ Enviamos como texto simple
+      await msg.reply(message);
+
     } catch (e) {
-      await msg.reply(msgglobal)
+      console.error("❌ [TTS ERROR]:", e.message);
+      msg.reply(msgglobal || '❌ Ocurrió un error en la búsqueda.');
     }
   },
 };
