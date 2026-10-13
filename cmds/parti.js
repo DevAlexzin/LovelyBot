@@ -37,17 +37,30 @@ export default {
       const usuarioId = msg.sender.split('@')[0];
       let usuarioRegistrado = registros.find(r => r.id === usuarioId);
 
-      // 6. Si NO está registrado, lo registramos con su nombre
+      // 6. Buscamos si hay un corazón en el mensaje
+      const corazonesValidos = ['💙', '🩷', '💜', '💛', '💚', '❤️', '🍯'];
+      const corazonEncontrado = corazonesValidos.find(c => textoUsuario.includes(c));
+
+      // ============================================================
+      // CASO 1: NO ESTÁ REGISTRADA
+      // ============================================================
       if (!usuarioRegistrado) {
+        // Si puso un corazón pero no está registrada, le pedimos que se registre primero
+        if (corazonEncontrado) {
+          return msg.reply('❌ Primero debes registrarte. Escribe `.parti TuNombre` (sin corazón).');
+        }
+
+        // Si no escribió nombre, le pedimos que se registre
         if (!textoUsuario) {
           return msg.reply('❌ Debes registrarte primero. Ejemplo: `.parti Tokyo`');
         }
 
-        // ✅ Limpiamos el nombre de cualquier comando que se haya colado
+        // Limpiamos el nombre de cualquier comando que se haya colado
         const nombreLimpio = textoUsuario
           .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
           .trim();
 
+        // Registramos al usuario SIN corazones
         usuarioRegistrado = {
           id: usuarioId,
           nombre: nombreLimpio,
@@ -61,23 +74,30 @@ export default {
         return msg.reply(`✅ *${nombreLimpio}* ha sido registrada.\n\nAhora cada vez que asistas, escribe \`.parti 💙\` (con el corazón del día) para sumar tu asistencia.`);
       }
 
-      // 7. Si YA está registrado, buscamos el corazón en el texto
-      // Buscamos cualquier emoji de corazón en el texto
-      const corazonesValidos = ['💙', '🩷', '💜', '💛', '💚', '❤️', '🍯'];
-      const corazonEncontrado = corazonesValidos.find(c => textoUsuario.includes(c));
+      // ============================================================
+      // CASO 2: YA ESTÁ REGISTRADA
+      // ============================================================
 
-      // Si no puso ningún corazón, le pedimos que ponga uno
-      if (!corazonEncontrado) {
+      // 2A. Si puso un corazón → Es una ASISTENCIA
+      if (corazonEncontrado) {
+        usuarioRegistrado.corazones.push(corazonEncontrado);
+        await db.updateChat(msg.chat, dbKey, registros);
+      }
+      // 2B. Si NO puso corazón pero escribió algo → Quiere cambiar su nombre
+      else if (textoUsuario) {
+        const nombreLimpio = textoUsuario
+          .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+          .trim();
+        
+        usuarioRegistrado.nombre = nombreLimpio;
+        await db.updateChat(msg.chat, dbKey, registros);
+      }
+      // 2C. Si NO puso corazón ni texto → Le pedimos el corazón
+      else {
         return msg.reply(`❌ *${usuarioRegistrado.nombre}*, debes poner el corazón del día que asististe.\n\n*Ejemplo:* \`.parti 💙\` (Lunes), \`.parti 🩷\` (Martes), etc.`);
       }
 
-      // 8. Agregamos el corazón que ELLA puso
-      usuarioRegistrado.corazones.push(corazonEncontrado);
-
-      // 9. Guardamos en la base de datos
-      await db.updateChat(msg.chat, dbKey, registros);
-
-      // 10. Construimos la lista
+      // 7. Construimos la lista
       let listaParticipantes = '';
       for (const reg of registros) {
         // ✅ Limpiamos cualquier comando que se haya guardado por error
@@ -106,7 +126,7 @@ export default {
 ${listaParticipantes}
 *Total de participantes:* ${registros.length}`;
 
-      // 11. Enviamos el mensaje
+      // 8. Enviamos el mensaje
       await sock.sendMessage(msg.chat, { text: participacionMsg.trim() }, { quoted: msg });
 
     } catch (e) {
