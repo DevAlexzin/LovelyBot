@@ -6,55 +6,56 @@ export default {
   category: 'downloader',
   run: async ({ msg, sock }) => {
     try {
-      // Extraemos el enlace del texto
       let textoCompleto = msg.text || msg.body || '';
       const url = textoCompleto
         .replace(/^[.\/!#]?(tiktok|tt|ttdl)\s*/i, '')
         .trim();
 
       if (!url) {
-        return msg.reply(`✿ Ingresa un enlace de TikTok.\n\n*Ejemplo:* \`.tiktok https://vm.tiktok.com/xxxxx\``);
+        return msg.reply(`✿ Ingresa un enlace de TikTok.\n\n*Ejemplo:* \`.tiktok https://vt.tiktok.com/xxxxx\``);
       }
 
       if (!url.includes('tiktok.com')) {
         return msg.reply('❌ El enlace no es válido. Debe ser de TikTok.');
       }
 
-      // Llamamos a la API de descarga
-      const apiUrl = `${api.url}/download/tiktok?url=${encodeURIComponent(url)}&key=${api.key}`;
-      
       console.log(`📥 [TIKTOK] Descargando: ${url}`);
 
-      const res = await fetch(apiUrl);
-      const json = await res.json();
+      // ✅ API alternativa que funciona desde cualquier servidor
+      const apiUrl = `https://api.tiklydown.eu.org/api/download?url=${encodeURIComponent(url)}`;
+      
+      const res = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
 
-      if (!json || !json.data) {
-        return msg.reply('❌ No se pudo obtener la información del video.');
+      const texto = await res.text();
+      
+      // Verificamos si es JSON
+      let json;
+      try {
+        json = JSON.parse(texto);
+      } catch (e) {
+        console.log('⚠️ [TIKTOK] La API no devolvió JSON:', texto.slice(0, 200));
+        return msg.reply('❌ La API no está disponible. Intenta más tarde.');
       }
 
-      const data = json.data;
+      if (!json || !json.video) {
+        return msg.reply('❌ No se pudo obtener el video. Puede ser privado o eliminado.');
+      }
 
-      // ✅ Detectamos la URL del video correctamente (varios formatos posibles)
-      const videoUrl = 
-        data.video?.play_addr?.url_list?.[0] || 
-        data.video?.download_addr?.url_list?.[0] ||
-        data.play ||
-        data.video ||
-        data.hdplay ||
-        data.wmplay;
+      const videoUrl = json.video.noWatermark || json.video.watermark;
+      const titulo = json.title || 'TikTok Video';
+      const autor = json.author?.name || 'Desconocido';
 
       if (!videoUrl) {
-        console.log('⚠️ [TIKTOK] Estructura de la API:', JSON.stringify(data, null, 2).slice(0, 500));
-        return msg.reply('❌ No se encontró el enlace del video. La API cambió su formato.');
+        return msg.reply('❌ No se encontró el enlace del video.');
       }
 
-      const titulo = data.title || data.desc || 'TikTok Video';
-      const autor = data.author?.nickname || data.author?.unique_id || 'Desconocido';
-
-      // ✅ ENVIAMOS EL VIDEO directamente (NO usamos sendAlbumMessage)
       await sock.sendMessage(msg.chat, {
         video: { url: videoUrl },
-        caption: `🎵 *${titulo}*\n\n> 👤 Autor: ${autor}\n> 🔗 ${url}`,
+        caption: `🎵 *${titulo}*\n\n> 👤 Autor: ${autor}`,
         mimetype: 'video/mp4'
       }, { quoted: msg });
 
