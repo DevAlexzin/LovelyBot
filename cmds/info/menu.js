@@ -11,40 +11,50 @@ export default {
   category: 'info',
   run: async ({ msg, sock, args, usedPrefix: prefix }) => {
     try {
-      const botId = sock?.user?.id.split(':')[0] + '@s.whatsapp.net' || '';
+      // ✅ Verificamos que el bot tenga usuario
+      const botId = sock?.user?.id?.split(':')[0] + '@s.whatsapp.net' || '';
+      if (!botId) {
+        return msg.reply('❌ Error: No se pudo obtener el ID del bot.');
+      }
+
       const botSettings = await db.getSettings(botId);
-      const botname = botSettings.namebot || '';
-      const botname2 = botSettings.namebot2 || '';
+      const botname = botSettings.namebot || 'Bot';
+      const botname2 = botSettings.namebot2 || 'Bot';
       const banner = botSettings.banner || '';
       const owner = botSettings.owner || '';
-      const links = botSettings.link || '';
-      const link = `https://web.stellarwa.xyz/home`
+      const link = 'https://web.stellarwa.xyz/home';
 
       const oficialId = global?.sock
         ? global.sock.user.id.split(':')[0] + '@s.whatsapp.net'
         : '';
       const isOficialBot = botId === oficialId;
-      const botType = isOficialBot
-        ? '𝐎𝐰𝐧𝐞𝐫'
-            : '𝐒𝐮𝐛-𝐁𝐨𝐭';
+      const botType = isOficialBot ? '𝐎𝐰𝐧𝐞𝐫' : '𝐒𝐮𝐛-𝐁𝐨𝐭';
 
-      const own = await db.getUser(owner);
+      // ✅ Obtenemos el nombre del owner (si es un ID válido)
+      let ownerName = '𝐎𝐜𝐮𝐥𝐭𝐨 𝐩𝐨𝐫 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝';
+      if (owner) {
+        try {
+          if (!isNaN(owner.replace(/@s\.whatsapp\.net$/, ''))) {
+            const own = await db.getUser(owner);
+            ownerName = own?.name || 'Sin nombre';
+          } else {
+            ownerName = owner;
+          }
+        } catch (e) {
+          ownerName = '𝐎𝐜𝐮𝐥𝐭𝐨 𝐩𝐨𝐫 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝';
+        }
+      }
 
-      let menu = `‎   ── ˙ ¡𝗛𝗲𝗹𝗹𝗼, 𝗵𝗶, 𝗜'𝗺.🫐${𝙇𝙤𝙫𝙚𝙡𝙮} (*${𝕰𝖒𝖞}*) .
+      // ✅ Texto del menú (corregido)
+      let menu = `‎   ── ˙ ¡𝗛𝗲𝗹𝗹𝗼, 𝗵𝗶, 𝗜'𝗺 🫐 𝙇𝙤𝙫𝙚𝙡𝙮 (*𝕰𝖒𝖞*) .
 ִֶָ🪽་༘ 𝙏𝙚 𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤 𝙢𝙞 𝙡𝙞𝙨𝙩𝙖 𝙙𝙚 𝙘𝙤𝙢𝙖𝙣𝙙𝙤𝙨 
 
 ⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹
 
 𖥻 ׁ ׅ 𝙇𝙞𝙣𝙠  ! ﹒ ◡◡
-𑣲　${wa.me/+5491172630652}
+𑣲　https://wa.me/+5491172630652
 𖥻 ׁ ׅ 𝘿𝙚𝙫𝙚𝙡𝙤𝙥𝙚𝙧  ! ﹒ ◡◡
-𑣲　${
-        owner
-          ? !isNaN(owner.replace(/@s\.whatsapp\.net$/, ''))
-            ? `${own.name}`
-            : owner
-          : '𝐎𝐜𝐮𝐥𝐭𝐨 𝐩𝐨𝐫 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝'
-      }
+𑣲　${ownerName}
 
 . ݁₊ ⊹ . ݁ ⟡ ݁ . ⊹ ₊ ݁.
 
@@ -61,10 +71,6 @@ ${String.fromCharCode(8206).repeat(4000)}`;
 
       const categoryEmojisList = [
         "୭ ᵎᵎ 🧁, ݁ ˖Ი𐑼⋆, ˚˖𓍢ִ໋🦢˚,"
-      ];
-
-      const categoryNameList = [
-        '𝘼𝙣𝙞𝙢𝙚', '𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱', '𝙀𝙘𝙤𝙣𝙤𝙢𝙞𝙖', '𝙂𝙖𝙘𝙝𝙖', '𝙂𝙧𝙪𝙥𝙤', '𝙄𝘼', '𝙄𝙣𝙛𝙤', '𝙉𝙨𝙛𝙬', '𝐏𝙧𝙤𝙛𝙞𝙡𝙚', '𝙎𝙚𝙖𝙧𝙘𝙝', '𝙎𝙤𝙘𝙠𝙚𝙩', '𝙎𝙩𝙞𝙘𝙠𝙚𝙧', '𝙐𝙩𝙞𝙡𝙨'
       ];
 
       const categoryNameMap = {
@@ -84,7 +90,8 @@ ${String.fromCharCode(8206).repeat(4000)}`;
       };
 
       const categoryDescriptions = {
-        'anime': 'Comandos de reacciones de anime.',        'download': 'Comandos de Descargas para descargar archivos de varias fuentes.',
+        'anime': 'Comandos de reacciones de anime.',
+        'download': 'Comandos de Descargas para descargar archivos de varias fuentes.',
         'economia': 'Comandos de Economía para ganar dinero y divertirte con tus amigos.',
         'gacha': 'Comandos de Gacha para reclamar y intercambiar personajes.',
         'grupo': 'Comandos para administradores de grupos.',
@@ -119,15 +126,18 @@ ${String.fromCharCode(8206).repeat(4000)}`;
 
         menu += `\n- ꪆ  ❬ ${catEmoji} ❭  *\`${catName}\`*  .✦ ݁˖    *;*\n`;
         menu += `> 𑣲⋆࣪ ִֶָ ${description}\n\n`;
+
         cmds.forEach((cmd) => {
-          const aliases = (cmd.alias || [])
+          // ✅ Corregido: usamos cmd.command en lugar de cmd.alias
+          const aliases = (cmd.command || [])
             .map((a) => {
               const aliasClean = a.split(/[\/#!+.\-]+/).pop().toLowerCase();
               return `${prefix}${aliasClean}`;
             })
             .join(' › ');
-          menu += `ִֶָ🫐་༘ ${aliases} ${cmd.uso ? `+ ${cmd.uso}` : ''}\n`;
-          menu += `> ── 𑁪ㅤׅㅤ۫ _${cmd.desc}_\n`;
+          
+          menu += `ִֶָ🫐་༘ ${aliases}${cmd.uso ? ` + ${cmd.uso}` : ''}\n`;
+          menu += `> ── 𑁪ㅤׅㅤ۫ _${cmd.desc || 'Sin descripción'}_\n`;
         });
 
         menu += `\n ㅤׅㅤ۫ㅤㅤ      ﹙ .ᐟ﹚ㅤׅㅤㅤ˚ㅤ\n`;
@@ -136,12 +146,9 @@ ${String.fromCharCode(8206).repeat(4000)}`;
       const contextBase = {
         mentionedJid: null,
         isForwarded: false,
-        /*forwardedNewsletterMessageInfo: {
-          newsletterJid: "",
-          serverMessageId: 0,
-          newsletterName: "Canal Oficial",
-        },*/
-      };      // ✅ AHORA: si existe menu.jpeg en la raíz del repo, se envía como imagen con caption
+      };
+
+      // ✅ Si existe menu.jpeg, se envía como imagen con caption
       if (fs.existsSync(menuImagePath)) {
         return sock.sendMessage(
           msg.chat,
@@ -154,7 +161,7 @@ ${String.fromCharCode(8206).repeat(4000)}`;
         );
       }
 
-      // 🔁 Fallback: si no existe menu.jpeg, se comporta como antes (banner o texto)
+      // Fallback: banner o texto
       const isVideo =
         banner.includes('.mp4') ||
         banner.includes('.gif') ||
@@ -190,8 +197,10 @@ ${String.fromCharCode(8206).repeat(4000)}`;
         { text: menu, linkPreview: preview, contextInfo: contextBase },
         { quoted: msg }
       );
+
     } catch (e) {
-      await msg.reply(msgglobal);
+      console.error('❌ [MENU ERROR]:', e.message);
+      await msg.reply(msgglobal || '❌ Ocurrió un error al cargar el menú.');
     }
   },
 };
