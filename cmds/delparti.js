@@ -128,9 +128,10 @@ export default {
           .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
           .trim();
         
+        // ✅ CAMBIO: Usamos 🌙 en lugar de ⏳ cuando no hay corazones
         const corazones = reg.corazones.length > 0 
           ? reg.corazones.join(' ') 
-          : '⏳';
+          : '🌙'; // <-- Cambia este emoji por el que prefieras
         
         listaParticipantes += `┈ꕤ // ${nombreLimpio} ║ ${corazones}\n`;
       }
@@ -144,7 +145,7 @@ export default {
 
 ─⋆ Mvρ 🍯
 ─⋆ Pᥲrtιᥴιρᥲᥴιoᥒ
-ㅤ.₊‧ʚɞ‧₊SᥱmᲐᥒᥲ
+ㅤ.₊‧ʚɞ‧₊Sᥱmᥲᥒᥲ
 𝗟💙/𝗠🩷/𝗠💜/𝗝💛/𝗩💚/𝗦❤️
 
 ⌢.⌢.⌢.꒰⌢୨୧⌢꒱.⌢.⌢.⌢
