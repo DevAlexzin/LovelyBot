@@ -37,25 +37,17 @@ export default {
       const dbKey = `participacion_semana_${año}_${semana}`;
       let registros = chatData[dbKey] || [];
 
-      // 5. Verificamos si el usuario ya está anotado
-      const usuarioId = msg.sender.split('@')[0];
-      const yaAnotado = registros.find(r => r.id === usuarioId);
-
-      if (yaAnotado) {
-        return msg.reply(`⚠️ Ya estás anotado en la participación de esta semana, *${yaAnotado.nombre}*.`);
-      }
-
-      // 6. Agregamos el nuevo registro
+      // 5. Agregamos el nuevo registro (SIN verificar si ya está anotado)
       registros.push({
-        id: usuarioId,
+        id: msg.sender.split('@')[0],
         nombre: textoUsuario,
         fecha: ahora.toISOString()
       });
 
-      // 7. Guardamos en la base de datos
+      // 6. Guardamos en la base de datos
       await db.updateChat(msg.chat, dbKey, registros);
 
-      // 8. Construimos la lista LIMPIANDO cualquier comando que se haya guardado antes
+      // 7. Construimos la lista LIMPIANDO cualquier comando que se haya guardado antes
       let listaParticipantes = '';
       for (const reg of registros) {
         // ✅ Limpiamos el nombre por si tiene algún comando pegado
@@ -80,7 +72,7 @@ export default {
 ${listaParticipantes}
 *Total de participantes:* ${registros.length}`;
 
-      // 9. Enviamos el mensaje
+      // 8. Enviamos el mensaje
       await sock.sendMessage(msg.chat, { text: participacionMsg.trim() }, { quoted: msg });
 
     } catch (e) {
