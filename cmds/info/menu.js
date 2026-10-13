@@ -30,13 +30,13 @@ export default {
 
       const own = await db.getUser(owner);
 
-      let menu = `‎   ── ˙ ¡᭝ ⋆ ՟ 🏹 ᨰꫀᥣᥴ᥆ꩇꫀ Aᥒgᥱᥣιᥴ ρrιᥒᥴᥱss${Aᥒgᥱᥣιᥴ ρrιᥒᥴᥱss} (*${Rocio}*) .
-ִֶָ ᰭ ꔛㅤׅ🎠 𝘾𝙤𝙢𝙖𝙣𝙙𝙤𝙨 𝙋𝙧𝙞𝙣𝙘𝙚𝙨𝙨 
+      let menu = `‎   ── ˙ ¡𝗛𝗲𝗹𝗹𝗼, 𝗵𝗶, 𝗜'𝗺.🫐${𝙇𝙤𝙫𝙚𝙡𝙮} (*${𝕰𝖒𝖞}*) .
+ִֶָ🪽་༘ 𝙏𝙚 𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤 𝙢𝙞 𝙡𝙞𝙨𝙩𝙖 𝙙𝙚 𝙘𝙤𝙢𝙖𝙣𝙙𝙤𝙨 
 
-⌢ . ⌢ . ⌢꒰ ⌢ ᨳଓ ⌢ ꒱⌢ . ⌢ . ⌢ .
+⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹
 
 𖥻 ׁ ׅ 𝙇𝙞𝙣𝙠  ! ﹒ ◡◡
-𑣲　${}
+𑣲　${wa.me/+5491172630652}
 𖥻 ׁ ׅ 𝘿𝙚𝙫𝙚𝙡𝙤𝙥𝙚𝙧  ! ﹒ ◡◡
 𑣲　${
         owner
@@ -102,7 +102,7 @@ ${String.fromCharCode(8206).repeat(4000)}`;
 
       if (categoryArg && !availableCategories.includes(categoryArg)) {
         return msg.reply(
-          `.ᐟ🌈 La categoría *${categoryArg}* no fue encontrada.\n\n> Categorías disponibles:\n${availableCategories.map(c => `› ${prefix}${c}`).join('\n')}`
+          `.ᐟ🫐 La categoría *${categoryArg}* no fue encontrada.\n\n> Categorías disponibles:\n${availableCategories.map(c => `› ${prefix}${c}`).join('\n')}`
         );
       }
 
@@ -126,7 +126,7 @@ ${String.fromCharCode(8206).repeat(4000)}`;
               return `${prefix}${aliasClean}`;
             })
             .join(' › ');
-          menu += `ִֶָु   ᜊ🪩 ${aliases} ${cmd.uso ? `+ ${cmd.uso}` : ''}\n`;
+          menu += `ִֶָ🫐་༘ ${aliases} ${cmd.uso ? `+ ${cmd.uso}` : ''}\n`;
           menu += `> ── 𑁪ㅤׅㅤ۫ _${cmd.desc}_\n`;
         });
 
