@@ -53,10 +53,8 @@ export default {
       const menciones = msg.mentionedJid || msg.mentions || [];
       
       if (menciones.length > 0) {
-        // Si mencionó a alguien, tomamos el primer mencionado
         usuarioObjetivoId = menciones[0].split('@')[0];
         
-        // Buscamos su nombre en el grupo
         try {
           const groupMetadata = await sock.groupMetadata(msg.chat);
           const participante = groupMetadata.participants.find(
@@ -67,7 +65,6 @@ export default {
           nombreObjetivo = usuarioObjetivoId;
         }
       } else {
-        // Si no mencionó, buscamos por nombre en el texto
         nombreObjetivo = textoUsuario
           .replace(corazonEspecificado || '', '')
           .trim();
@@ -81,11 +78,9 @@ export default {
       let personaRegistrada = null;
 
       if (usuarioObjetivoId) {
-        // Buscamos por ID
         personaRegistrada = registros.find(r => r.id === usuarioObjetivoId);
       }
 
-      // Si no se encontró por ID, buscamos por nombre
       if (!personaRegistrada && nombreObjetivo) {
         personaRegistrada = registros.find(
           r => r.nombre.toLowerCase().includes(nombreObjetivo.toLowerCase())
@@ -105,7 +100,6 @@ export default {
       let corazonQuitado = null;
 
       if (corazonEspecificado) {
-        // Si especificó un corazón, buscamos el último de ese tipo
         const index = personaRegistrada.corazones.lastIndexOf(corazonEspecificado);
         
         if (index === -1) {
@@ -114,7 +108,6 @@ export default {
 
         corazonQuitado = personaRegistrada.corazones.splice(index, 1)[0];
       } else {
-        // Si no especificó, quitamos el último corazón
         corazonQuitado = personaRegistrada.corazones.pop();
       }
 
@@ -128,12 +121,13 @@ export default {
           .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
           .trim();
         
-        // ✅ CAMBIO: Usamos 🌙 en lugar de ⏳ cuando no hay corazones
+        // ✅ CAMBIO: Si no hay corazones, solo dejamos el nombre sin emoji
         const corazones = reg.corazones.length > 0 
           ? reg.corazones.join(' ') 
-          : ''; // <-- Cambia este emoji por el que prefieras
+          : '';
         
-        listaParticipantes += `┈ꕤ // ${nombreLimpio} ║ ${corazones}\n`;
+        // Si no hay corazones, mostramos solo el nombre con la barra, sin nada al lado
+        listaParticipantes += `┈ꕤ // ${nombreLimpio} ║${corazones ? ' ' + corazones : ''}\n`;
       }
 
       const participacionMsg = `✅ *Corazón eliminado*
