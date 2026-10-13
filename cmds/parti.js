@@ -1,15 +1,5 @@
 import db from "#db"
 
-// Emojis por día de la semana (Domingo=0, Lunes=1, ... Sábado=6)
-const EMOJIS_DIAS = {
-  1: '💙', // Lunes
-  2: '🩷', // Martes
-  3: '💜', // Miércoles
-  4: '💛', // Jueves
-  5: '💚', // Viernes
-  6: '❤️'  // Sábado
-}
-
 export default {
   command: ['parti', 'participacion'],
   category: 'grupo',
@@ -25,7 +15,7 @@ export default {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
-      // 2. Extraemos el nombre del usuario
+      // 2. Extraemos el texto que escribió el usuario (SIN el comando)
       let textoCompleto = msg.text || msg.body || '';
       let textoUsuario = textoCompleto
         .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
@@ -37,42 +27,52 @@ export default {
       const inicioAño = new Date(año, 0, 1);
       const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
       const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
-      
-      // Día de la semana actual (0=Domingo, 1=Lunes, ... 6=Sábado)
-      const diaSemana = ahora.getDay();
-      const emojiDia = EMOJIS_DIAS[diaSemana];
 
-      // 4. Si es Domingo, no hay participación
-      if (!emojiDia) {
-        return msg.reply('⚠️ Hoy es Domingo, no hay participación. Vuelve el Lunes 💙');
-      }
-
-      // 5. Leemos la configuración del chat
+      // 4. Leemos la configuración del chat
       const chatData = await db.getChat(msg.chat);
       const dbKey = `participacion_semana_${año}_${semana}`;
       let registros = chatData[dbKey] || [];
 
-      // 6. Buscamos si el usuario ya está registrado
+      // 5. Buscamos si el usuario ya está registrado
       const usuarioId = msg.sender.split('@')[0];
       let usuarioRegistrado = registros.find(r => r.id === usuarioId);
 
-      // 7. Si no está registrado, lo registramos
+      // 6. Si NO está registrado, lo registramos con su nombre
       if (!usuarioRegistrado) {
         if (!textoUsuario) {
-          return msg.reply('❌ Debes registrarte primero. Ejemplo: `.parti Tokyo 💜`');
+          return msg.reply('❌ Debes registrarte primero. Ejemplo: `.parti Tokyo`');
         }
+
+        // ✅ Limpiamos el nombre de cualquier comando que se haya colado
+        const nombreLimpio = textoUsuario
+          .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+          .trim();
 
         usuarioRegistrado = {
           id: usuarioId,
-          nombre: textoUsuario,
+          nombre: nombreLimpio,
           corazones: [],
           fechaRegistro: ahora.toISOString()
         };
         registros.push(usuarioRegistrado);
+
+        await db.updateChat(msg.chat, dbKey, registros);
+
+        return msg.reply(`✅ *${nombreLimpio}* ha sido registrada.\n\nAhora cada vez que asistas, escribe \`.parti 💙\` (con el corazón del día) para sumar tu asistencia.`);
       }
 
-      // 8. ✅ Agregamos el corazón SIN LÍMITE (siempre se agrega uno nuevo)
-      usuarioRegistrado.corazones.push(emojiDia);
+      // 7. Si YA está registrado, buscamos el corazón en el texto
+      // Buscamos cualquier emoji de corazón en el texto
+      const corazonesValidos = ['💙', '🩷', '💜', '💛', '💚', '❤️', '🍯'];
+      const corazonEncontrado = corazonesValidos.find(c => textoUsuario.includes(c));
+
+      // Si no puso ningún corazón, le pedimos que ponga uno
+      if (!corazonEncontrado) {
+        return msg.reply(`❌ *${usuarioRegistrado.nombre}*, debes poner el corazón del día que asististe.\n\n*Ejemplo:* \`.parti 💙\` (Lunes), \`.parti 🩷\` (Martes), etc.`);
+      }
+
+      // 8. Agregamos el corazón que ELLA puso
+      usuarioRegistrado.corazones.push(corazonEncontrado);
 
       // 9. Guardamos en la base de datos
       await db.updateChat(msg.chat, dbKey, registros);
@@ -80,6 +80,7 @@ export default {
       // 10. Construimos la lista
       let listaParticipantes = '';
       for (const reg of registros) {
+        // ✅ Limpiamos cualquier comando que se haya guardado por error
         const nombreLimpio = reg.nombre
           .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
           .trim();
