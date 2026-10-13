@@ -131,7 +131,7 @@ export default {
         // ✅ CAMBIO: Usamos 🌙 en lugar de ⏳ cuando no hay corazones
         const corazones = reg.corazones.length > 0 
           ? reg.corazones.join(' ') 
-          : '🌙'; // <-- Cambia este emoji por el que prefieras
+          : ''; // <-- Cambia este emoji por el que prefieras
         
         listaParticipantes += `┈ꕤ // ${nombreLimpio} ║ ${corazones}\n`;
       }
