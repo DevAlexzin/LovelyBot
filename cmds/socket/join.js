@@ -3,23 +3,89 @@ import db from "#db"
 export default {
   command: ['join', 'unir'],
   isModeration: true,
-  run: async ({ msg, sock }) => {
+  run: async ({ msg, sock, participants }) => {
     try {
       const idBot = sock.user.id.split(':')[0] + '@s.whatsapp.net'
       const config = await db.getSettings(idBot)
 
-      // ✅ Validamos que global.mods exista antes de hacer .map()
-      const mods = Array.isArray(global.mods) ? global.mods : []
-      
-      const isOwner2 = [
+      // ✅ Función robusta para extraer el número real del sender
+      const getSenderNumber = (sender) => {
+        if (!sender) return ''
+        return sender.split('@')[0].split(':')[0]
+      }
+
+      const senderNumero = getSenderNumber(msg.sender)
+      console.log('📱 [JOIN] Sender:', msg.sender, '→ Número:', senderNumero)
+
+      // ✅ Obtenemos TODOS los identificadores del sender en el grupo
+      const senderIds = new Set()
+      senderIds.add(msg.sender)
+      senderIds.add(msg.sender.split(':')[0] + '@s.whatsapp.net')
+      senderIds.add(senderNumero + '@s.whatsapp.net')
+      senderIds.add(senderNumero)
+
+      // ✅ Buscamos en los participantes del grupo el LID del sender
+      if (participants && participants.length > 0) {
+        for (const p of participants) {
+          const pIds = [
+            p.id?.split('@')[0],
+            p.id?.split(':')[0],
+            p.lid?.split('@')[0],
+            p.phoneNumber?.split('@')[0]
+          ].filter(Boolean)
+
+          // Si el participant coincide con el sender en cualquier formato, agregamos sus IDs
+          if (pIds.includes(senderNumero) || 
+              p.id === msg.sender || 
+              p.lid === msg.sender) {
+            pIds.forEach(id => {
+              senderIds.add(id)
+              senderIds.add(id + '@s.whatsapp.net')
+            })
+          }
+        }
+      }
+
+      console.log('🔍 [JOIN] IDs detectados del sender:', [...senderIds])
+
+      // ✅ Construimos la lista de owners en TODOS los formatos
+      const ownersGlobales = (global.owner || []).flatMap(num => [
+        num,
+        num + '@s.whatsapp.net',
+        num + '@lid'
+      ])
+
+      const mods = (global.mods || []).flatMap(num => [
+        num,
+        num + '@s.whatsapp.net',
+        num + '@lid'
+      ])
+
+      const ownersBot = config.owner ? [
+        config.owner,
+        config.owner + '@s.whatsapp.net',
+        config.owner + '@lid'
+      ] : []
+
+      const todosLosOwners = [
         idBot,
-        ...(config.owner ? [config.owner] : []),
-        ...mods.map(num => num + '@s.whatsapp.net')
-      ].includes(msg.sender)
+        ...ownersBot,
+        ...ownersGlobales,
+        ...mods
+      ]
 
-      if (!isOwner2) return msg.reply(mess?.socket || '❌ No tienes permiso para usar este comando.')
+      console.log('👑 [JOIN] Owners válidos:', todosLosOwners)
 
-      // ✅ Extraemos el enlace de forma más robusta
+      // ✅ Verificamos si ALGUNO de los IDs del sender está en la lista de owners
+      const esOwner = [...senderIds].some(id => todosLosOwners.includes(id))
+
+      console.log('✅ [JOIN] ¿Es owner?:', esOwner)
+
+      if (!esOwner) {
+        return msg.reply('❌ Este comando solo puede ser ejecutado por un Owner.')
+      }
+
+      // Extraemos el enlace
       let textoCompleto = msg.text || msg.body || ''
       const textoLimpio = textoCompleto
         .replace(/^[.\/!#]?(join|unir)\s*/i, '')
@@ -37,12 +103,11 @@ export default {
       }
 
       const inviteCode = match[1]
-      
       await sock.groupAcceptInvite(inviteCode)
-      
+
       await sock.reply(
-        msg.chat, 
-        `❀ ${config.namebot || 'El bot'} se ha unido exitosamente al grupo.`, 
+        msg.chat,
+        `❀ ${config.namebot || 'El bot'} se ha unido exitosamente al grupo.`,
         msg
       )
 
@@ -51,7 +116,7 @@ export default {
       console.error('❌ [JOIN ERROR]:', errMsg)
 
       if (errMsg.includes('not-authorized') || errMsg.includes('requires-admin')) {
-        await msg.reply('《✧》 La unión requiere aprobación de administrador. Espera a que acepten tu solicitud.')
+        await msg.reply('《✧》 La unión requiere aprobación de administrador.')
       } else if (errMsg.includes('not-in-group') || errMsg.includes('removed')) {
         await msg.reply('《✧》 No se pudo unir al grupo porque el bot fue eliminado recientemente.')
       } else {
