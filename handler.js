@@ -13,11 +13,93 @@ export default async (sock, msg) => {
   const sender = msg.sender;
   let body = msg.body || '';
 
-const from = msg.key.remoteJid
-const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net' || sock.user.lid
+  const from = msg.key.remoteJid
+  const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net' || sock.user.lid
 
-const chatData = await db.getChat(msg.chat)
-const settings = await db.getSettings(botJid)  
+  const chatData = await db.getChat(msg.chat)
+  const settings = await db.getSettings(botJid)  
+
+  // ============================================================
+  // MANEJADOR DE BOTONES DE GANADORES
+  // ============================================================
+  if (msg.message?.buttonsResponseMessage) {
+    const buttonId = msg.message.buttonsResponseMessage.selectedButtonId;
+    const buttonText = msg.message.buttonsResponseMessage.selectedDisplayText;
+    const chatId = msg.key.remoteJid;
+
+    if (buttonId && buttonId.startsWith('ganadores_')) {
+      const dia = buttonId.replace('ganadores_', '');
+      const emojiDia = {
+        lunes: '🍯',
+        martes: '🍒',
+        miercoles: '🪩',
+        jueves: '👯‍♀️',
+        viernes: '🏹',
+        sabado: '🌈'
+      };
+
+      // Recuperamos los datos temporales guardados por el comando
+      const temporal = global.ganadoresTemporal?.[chatId];
+
+      if (!temporal) {
+        await sock.sendMessage(chatId, {
+          text: '❌ No se encontraron datos para anotar. Vuelve a usar el comando `.ganadores` con los datos.'
+        }, { quoted: msg });
+        return;
+      }
+
+      // Verificamos que no hayan pasado más de 5 minutos
+      const tiempoTranscurrido = Date.now() - temporal.timestamp;
+      if (tiempoTranscurrido > 5 * 60 * 1000) {
+        delete global.ganadoresTemporal[chatId];
+        await sock.sendMessage(chatId, {
+          text: '⏳ Los datos han expirado. Vuelve a usar el comando `.ganadores` con los datos.'
+        }, { quoted: msg });
+        return;
+      }
+
+      // Guardamos en la base de datos
+      const ahora = new Date();
+      const año = ahora.getFullYear();
+      const inicioAño = new Date(año, 0, 1);
+      const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
+      const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
+
+      const chatDataGanadores = await db.getChat(chatId);
+      const dbKey = `ganadores_semana_${año}_${semana}`;
+      let ganadores = chatDataGanadores[dbKey] || {
+        lunes: [], martes: [], miercoles: [], jueves: [], viernes: [], sabado: [], extras: []
+      };
+
+      // Agregamos al día correspondiente
+      ganadores[dia].push({
+        numero: temporal.numero,
+        premio: temporal.premio,
+        nombre: temporal.nombre,
+        fecha: ahora.toISOString()
+      });
+
+      await db.updateChat(chatId, dbKey, ganadores);
+
+      // Limpiamos los datos temporales
+      delete global.ganadoresTemporal[chatId];
+
+      // Confirmamos el registro
+      await sock.sendMessage(chatId, {
+        text: `✅ *Ganador anotado correctamente*
+
+> 📱 Número: ${temporal.numero}
+> 🎁 Premio: ${temporal.premio}
+> 👤 Nombre: ${temporal.nombre}
+> 📅 Día: ${emojiDia[dia]} ${dia.charAt(0).toUpperCase() + dia.slice(1)}`
+      }, { quoted: msg });
+      
+      return; // Detenemos el procesamiento
+    }
+  }
+  // ============================================================
+  // FIN MANEJADOR DE BOTONES
+  // ============================================================
 
   const isOwner = global.owner.map(num => num + '@s.whatsapp.net').includes(sender);
   const isROwner = [botJid, ...(settings.owner ? [settings.owner] : []), ...global.owner.map(num => num + '@s.whatsapp.net')].includes(sender);
@@ -41,17 +123,17 @@ const settings = await db.getSettings(botJid)
 
   Promise.allSettled((global.cmdsExecute ?? []).filter(p => p.type === 'all').map(p => p.fn({ msg, sock, groupMetadata, participants, isAdmins, isBotAdmins, isOwner, __dirname: p.dirname }).catch(e => console.error(chalk.gray(`[ ✿ ] Error all-plugin ${p.key}: ${e.message}`)))));
 
-const tf = await db.getChatUser(msg.chat, msg.sender)
-const to = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-') 
+  const tf = await db.getChatUser(msg.chat, msg.sender)
+  const to = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-') 
 
-if (!tf) {
-  await db.updateChatUser(msg.chat, msg.sender, { stats: { [to]: { msgs: 0, cmds: 0 } } });
-} else {
-  if (!tf.stats) tf.stats = {}
-  if (!tf.stats[to]) tf.stats[to] = { msgs: 0, cmds: 0 }
-  tf.stats[to].msgs++
-  await db.updateChatUser(msg.chat, msg.sender, 'stats', tf.stats)
-}
+  if (!tf) {
+    await db.updateChatUser(msg.chat, msg.sender, { stats: { [to]: { msgs: 0, cmds: 0 } } });
+  } else {
+    if (!tf.stats) tf.stats = {}
+    if (!tf.stats[to]) tf.stats[to] = { msgs: 0, cmds: 0 }
+    tf.stats[to].msgs++
+    await db.updateChatUser(msg.chat, msg.sender, 'stats', tf.stats)
+  }
 
   const rawBotname = settings.namebot2 || 'Stellar';
   const tipo = settings.type || 'Sub';
@@ -100,12 +182,12 @@ if (!tf) {
   let text = args.join(' ');
   if (!command) return;
 
-const pushname = msg.pushName || 'Sin nombre'
+  const pushname = msg.pushName || 'Sin nombre'
 
-const consolePrimary = chatData.primaryBot;
+  const consolePrimary = chatData.primaryBot;
 
-if (msg.message || !consolePrimary || consolePrimary === botJid) {
-console.log(`
+  if (msg.message || !consolePrimary || consolePrimary === botJid) {
+    console.log(`
 𝄢 · • —– ٠ ✤ ٠ —– • · · • —– ٠ ✤ ٠ —– • ·✧༄
 ❚ ▸ ${chalk.cyan('𝐁𝐎𝐓 ❱❱')} ${chalk.bgMagenta(chalk.white.italic(sock.user.name))}
 ❚ ▸ ${chalk.cyan('𝐇𝐎𝐑𝐀𝐑𝐈𝐎 ❱❱')} ${chalk.black.bgWhite(moment().format('DD/MM/YY HH:mm:ss'))}
@@ -115,9 +197,9 @@ console.log(`
 ❚ ${chalk.magentaBright('°o.OO.o°°o.OO.o°°o.OO.o°')}
 ❚ ▸ ${chalk.redBright('𝐓𝐈𝐏𝐎 ❱❱')} ${chalk.greenBright.bold('[Bot Log]')}
 𝄢 · • —– ٠ ✤ ٠ —– • · · • —– ٠ ✤ ٠ —– • ·✧༄`.trim())
-}
+  }
 
-   const hasPrefix = (settings.prefijo === 1 || settings.prefijo === true) ? true : (Array.isArray(settings.prefijo) ? settings.prefijo : typeof settings.prefijo === 'string' ? [settings.prefijo] : []).some(p => msg.text?.startsWith(p));
+  const hasPrefix = (settings.prefijo === 1 || settings.prefijo === true) ? true : (Array.isArray(settings.prefijo) ? settings.prefijo : typeof settings.prefijo === 'string' ? [settings.prefijo] : []).some(p => msg.text?.startsWith(p));
   const botprimaryId = chatData?.primaryBot;
   if (botprimaryId && botprimaryId !== botJid) {
     if (hasPrefix) {
@@ -150,99 +232,98 @@ console.log(`
     }
   }
 
-const isVotOwn = [
-  sock.user.id.split(':')[0] + '@s.whatsapp.net',
-  ...global.owner.map(num => num + '@s.whatsapp.net')
-].includes(sender)
+  const isVotOwn = [
+    sock.user.id.split(':')[0] + '@s.whatsapp.net',
+    ...global.owner.map(num => num + '@s.whatsapp.net')
+  ].includes(sender)
 
-if (settings.self) {
-  const owner = settings.owner
-  if (
-    sender !== owner &&
-    !isVotOwn &&
-    !global.mods.map(num => num + '@s.whatsapp.net').includes(sender)
-  ) return
-}
+  if (settings.self) {
+    const owner = settings.owner
+    if (
+      sender !== owner &&
+      !isVotOwn &&
+      !global.mods.map(num => num + '@s.whatsapp.net').includes(sender)
+    ) return
+  }
 
-if (msg.chat && !msg.chat.endsWith('g.us')) {
-  const allowedInPrivateForUsers = ['report', 'reporte', 'sug', 'suggest', 'invite', 'invitar', 'setusername', 'setpfp', 'setimage', 'setstatus', 'reload', 'setname', 'setbotname', 'setmenubanner', 'setbanner', 'setbotcurrency', 'code', 'qr', 'setbotowner', 'setlink', 'setbotlink', 'setbotprefix']
-  const owners = settings.owner
-  if (
-    sender !== owners &&
-    !global.owner.map(num => num + '@s.whatsapp.net').includes(sender) &&
-    !allowedInPrivateForUsers.includes(command)
-  ) return
-}
+  if (msg.chat && !msg.chat.endsWith('g.us')) {
+    const allowedInPrivateForUsers = ['report', 'reporte', 'sug', 'suggest', 'invite', 'invitar', 'setusername', 'setpfp', 'setimage', 'setstatus', 'reload', 'setname', 'setbotname', 'setmenubanner', 'setbanner', 'setbotcurrency', 'code', 'qr', 'setbotowner', 'setlink', 'setbotlink', 'setbotprefix']
+    const owners = settings.owner
+    if (
+      sender !== owners &&
+      !global.owner.map(num => num + '@s.whatsapp.net').includes(sender) &&
+      !allowedInPrivateForUsers.includes(command)
+    ) return
+  }
 
-if (chatData?.bannedGrupo && !['#bot on', '/bot on', '.bot on', '!bot on', '-bot on', '+bot on', 'bot on'].includes(body.toLowerCase()) &&
-    !global.owner.map(num => num + '@s.whatsapp.net').includes(msg.sender)) return
+  if (chatData?.bannedGrupo && !['#bot on', '/bot on', '.bot on', '!bot on', '-bot on', '+bot on', 'bot on'].includes(body.toLowerCase()) &&
+      !global.owner.map(num => num + '@s.whatsapp.net').includes(msg.sender)) return
 
-if (chatData.adminonly && !isAdmins) return
+  if (chatData.adminonly && !isAdmins) return
 
-if ((msg.id.startsWith("3EB0") || (msg.id.startsWith("BAE5") && msg.id.length === 16) || (msg.id.startsWith("B24E") && msg.id.length === 20))) return
+  if ((msg.id.startsWith("3EB0") || (msg.id.startsWith("BAE5") && msg.id.length === 16) || (msg.id.startsWith("B24E") && msg.id.length === 20))) return
 
-const user = await db.getChatUser(msg.chat, msg.sender)
+  const user = await db.getChatUser(msg.chat, msg.sender)
 
-const today = new Date().toLocaleDateString('es-CO', { 
-  timeZone: 'America/Bogota',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-}).split('/').reverse().join('-') 
+  const today = new Date().toLocaleDateString('es-CO', { 
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).split('/').reverse().join('-') 
 
-if (!user) {
-  await db.updateChatUser(msg.chat, msg.sender, { stats: { [today]: { msgs: 0, cmds: 0 } } });
-} else {
-  if (!user.stats) user.stats = {}
-  if (!user.stats[today]) user.stats[today] = { msgs: 0, cmds: 0 }
-}
+  if (!user) {
+    await db.updateChatUser(msg.chat, msg.sender, { stats: { [today]: { msgs: 0, cmds: 0 } } });
+  } else {
+    if (!user.stats) user.stats = {}
+    if (!user.stats[today]) user.stats[today] = { msgs: 0, cmds: 0 }
+  }
 
   const cmdData = global.comandos.get(command);
 
-if (!cmdData || user.muted === 1 || user.muted === true) {
-  if (settings.prefijo === 1 || settings.prefijo === true || user.muted === 1 || user.muted === true) return
-  await sock.readMessages([msg.key])
-  return msg.reply(`ꕤ El comando *${command}* no existe.\n✎ Usa *${usedPrefix}help* para ver la lista de comandos disponibles.`)
-}
-
-const comando = msg.text.slice(usedPrefix.length)
-
-if (cmdData.isOwner && !global.owner.map(num => num + '@s.whatsapp.net').includes(sender)) {
-  return msg.reply(`ꕤ El comando *${command}* no existe.\n✎ Usa *${usedPrefix}help* para ver la lista de comandos disponibles.`)
-}
-
-
-if (cmdData.isAdmin && !isAdmins) return sock.reply(msg.chat, mess.admin, msg)
-if (cmdData.botAdmin && !isBotAdmins) return sock.reply(msg.chat, mess.botAdmin, msg)
-
-try {
-  await sock.readMessages([msg.key])
-  const user2 = await db.getUser(msg.sender)
-
-  if (!user2) {
-    await db.updateUser(msg.sender, { usedcommands: 1, exp: Math.floor(Math.random() * 100), name: msg.pushName })
-  } else {
-    user2.usedcommands = (user2.usedcommands || 0) + 1
-    user2.exp = (user2.exp || 0) + Math.floor(Math.random() * 100)
-    user2.name = msg.pushName
-    await db.updateUser(msg.sender, 'exp', user2.exp)
-    await db.updateUser(msg.sender, 'name', user2.name)
-    await db.updateUser(msg.sender, 'usedcommands', user2.usedcommands)
+  if (!cmdData || user.muted === 1 || user.muted === true) {
+    if (settings.prefijo === 1 || settings.prefijo === true || user.muted === 1 || user.muted === true) return
+    await sock.readMessages([msg.key])
+    return msg.reply(`ꕤ El comando *${command}* no existe.\n✎ Usa *${usedPrefix}help* para ver la lista de comandos disponibles.`)
   }
 
-  settings.commandsejecut = (settings.commandsejecut || 0) + 1
-  await db.updateSettings(botJid, 'commandsejecut', settings.commandsejecut)
+  const comando = msg.text.slice(usedPrefix.length)
 
-  const userStats = await db.getChatUser(msg.chat, msg.sender)
-  if (userStats && userStats.stats && userStats.stats[today]) {
-    userStats.stats[today].cmds++
-    await db.updateChatUser(msg.chat, msg.sender, 'stats', userStats.stats)
+  if (cmdData.isOwner && !global.owner.map(num => num + '@s.whatsapp.net').includes(sender)) {
+    return msg.reply(`ꕤ El comando *${command}* no existe.\n✎ Usa *${usedPrefix}help* para ver la lista de comandos disponibles.`)
   }
 
-  await cmdData.run({ msg, sock, args, command, usedPrefix, text, groupMetadata, participants, isAdmins, isBotAdmins, isOwner, __dirname: global.plugins[cmdData.pluginKey]?.dirname });
-} catch (error) {
-  console.log(error)
-  return msg.reply(`${error}`)
-}
+  if (cmdData.isAdmin && !isAdmins) return sock.reply(msg.chat, mess.admin, msg)
+  if (cmdData.botAdmin && !isBotAdmins) return sock.reply(msg.chat, mess.botAdmin, msg)
+
+  try {
+    await sock.readMessages([msg.key])
+    const user2 = await db.getUser(msg.sender)
+
+    if (!user2) {
+      await db.updateUser(msg.sender, { usedcommands: 1, exp: Math.floor(Math.random() * 100), name: msg.pushName })
+    } else {
+      user2.usedcommands = (user2.usedcommands || 0) + 1
+      user2.exp = (user2.exp || 0) + Math.floor(Math.random() * 100)
+      user2.name = msg.pushName
+      await db.updateUser(msg.sender, 'exp', user2.exp)
+      await db.updateUser(msg.sender, 'name', user2.name)
+      await db.updateUser(msg.sender, 'usedcommands', user2.usedcommands)
+    }
+
+    settings.commandsejecut = (settings.commandsejecut || 0) + 1
+    await db.updateSettings(botJid, 'commandsejecut', settings.commandsejecut)
+
+    const userStats = await db.getChatUser(msg.chat, msg.sender)
+    if (userStats && userStats.stats && userStats.stats[today]) {
+      userStats.stats[today].cmds++
+      await db.updateChatUser(msg.chat, msg.sender, 'stats', userStats.stats)
+    }
+
+    await cmdData.run({ msg, sock, args, command, usedPrefix, text, groupMetadata, participants, isAdmins, isBotAdmins, isOwner, __dirname: global.plugins[cmdData.pluginKey]?.dirname });
+  } catch (error) {
+    console.log(error)
+    return msg.reply(`${error}`)
+  }
 
 };
