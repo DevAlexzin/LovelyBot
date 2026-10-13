@@ -18,7 +18,7 @@ export default {
       const banner = botSettings.banner || '';
       const owner = botSettings.owner || '';
       const links = botSettings.link || '';
-      const link = `https://web.stellarwa.xyz/home`
+      const link = `https://es.pornhub.com/`
 
       const oficialId = global?.sock
         ? global.sock.user.id.split(':')[0] + '@s.whatsapp.net'
@@ -49,7 +49,7 @@ export default {
 ᅟᅟ︶͜︶͜︶ᅟᅟ֪ᅟ֪ᅟᅟ︶͜︶͜︶
 
 > ૮(˶ᵔᕕᔔ˶)ა Contactate en nuestra web oficial:
-> ✐ ${links}
+> ✐ ${link}
 
 ${String.fromCharCode(8206).repeat(4000)}`;
 
