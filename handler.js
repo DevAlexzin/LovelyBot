@@ -35,7 +35,18 @@ export default async (sock, msg) => {
         miercoles: '🪩',
         jueves: '👯‍♀️',
         viernes: '🏹',
-        sabado: '🌈'
+        sabado: '🌈',
+        extras: '✨'
+      };
+
+      const nombreDia = {
+        lunes: 'Lunes',
+        martes: 'Martes',
+        miercoles: 'Miércoles',
+        jueves: 'Jueves',
+        viernes: 'Viernes',
+        sabado: 'Sábado',
+        extras: 'Extras'
       };
 
       // Recuperamos los datos temporales guardados por el comando
@@ -71,6 +82,21 @@ export default async (sock, msg) => {
         lunes: [], martes: [], miercoles: [], jueves: [], viernes: [], sabado: [], extras: []
       };
 
+      // ✅ VALIDACIÓN EXTRA: Verificar cuántas veces ha ganado esta semana
+      let vecesGanadas = 0;
+      for (const key of ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'extras']) {
+        const items = ganadores[key] || [];
+        vecesGanadas += items.filter(item => item.numero === temporal.numero).length;
+      }
+
+      if (vecesGanadas >= 2) {
+        delete global.ganadoresTemporal[chatId];
+        await sock.sendMessage(chatId, {
+          text: `⚠️ *Este número ya ganó 2 veces esta semana.*\n\n> 📱 Número: ${temporal.numero}\n> 👤 Nombre: ${temporal.nombre}\n\n*No puede ganar más de 2 veces por semana.*`
+        }, { quoted: msg });
+        return;
+      }
+
       // Agregamos al día correspondiente
       ganadores[dia].push({
         numero: temporal.numero,
@@ -91,7 +117,8 @@ export default async (sock, msg) => {
 > 📱 Número: ${temporal.numero}
 > 🎁 Premio: ${temporal.premio}
 > 👤 Nombre: ${temporal.nombre}
-> 📅 Día: ${emojiDia[dia]} ${dia.charAt(0).toUpperCase() + dia.slice(1)}`
+> 📅 Día: ${emojiDia[dia]} ${nombreDia[dia]}
+> 📊 Veces ganadas esta semana: ${vecesGanadas + 1}/2`
       }, { quoted: msg });
       
       return; // Detenemos el procesamiento
