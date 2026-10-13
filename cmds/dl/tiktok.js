@@ -1,138 +1,68 @@
 import db from "#db"
-import axios from "axios"
+import fetch from 'node-fetch';
 
 export default {
-  command: ["tiktok", "tt"],
-  category: "downloader",
-  isSocket: true,
-  run: async ({ msg, sock, args, command }) => {
-    if (!args.length) {
-      return msg.reply("✿ Ingresa un término o enlace de TikTok.")
-    }
-
-    const isMp3 = args.includes("--mp3")
-    const urls = args.filter(arg => arg.includes("tiktok.com"))
-
-    const buildCaption = (data) => {
-      const {
-        title = "Sin título",
-        author = {},
-        stats = {},
-        music = {},
-        music_info = {},
-        duration,
-        id
-      } = data
-
-      const tiktokLink = `https://www.tiktok.com/@${author.unique_id || "unknown"}/video/${id}`
-
-      return (
-        `ㅤ۟∩　ׅ　★ ໌　ׅ　🅣𝗂𝗄𝖳𝗈𝗸 🅓ownload　ᰙ\n\n` +
-        `𖣣ֶㅤ֯⌗ ✿ ⬭ Título: ${title}\n` +
-        `𖣣ֶㅤ֯⌗ ★ ⬭ Autor: ${author.nickname || author.unique_id || "Desconocido"}\n` +
-        `𖣣ֶㅤ֯⌗ ❖ ⬭ Duración: ${duration || music_info?.duration || music?.duration || "N/A"}\n` +
-        `𖣣ֶㅤ֯⌗ ♡ ⬭ Likes: ${(stats.likes || 0).toLocaleString()}\n` +
-        `𖣣ֶㅤ֯⌗ ꕥ ⬭ Comentarios: ${(stats.comments || 0).toLocaleString()}\n` +
-        `𖣣ֶㅤ֯⌗ ❒ ⬭ Vistas: ${(stats.views || stats.plays || 0).toLocaleString()}\n` +
-        `𖣣ֶㅤ֯⌗ ☄︎ ⬭ Compartidos: ${(stats.shares || 0).toLocaleString()}\n` +
-        `𖣣ֶㅤ֯⌗ ❍ ⬭ Enlace: ${tiktokLink}\n` +
-        `𖣣ֶㅤ֯⌗ ❖ ⬭ Audio: ${(music?.title || music_info?.title) ? (music.title || music_info.title) + " -" : "Desconocido"} ${(music?.author || music_info?.author || "")}`
-      )
-    }
-
-    if (urls.length) {
-      const url = urls[0]
-      try {
-        const apiUrl = isMp3
-          ? `${api.url}/dl/tiktokmp3?url=${encodeURIComponent(url)}&key=${api.key}`
-          : `${api.url}/dl/tiktok?url=${url}&key=${api.key}`
-
-        const res = await axios.get(apiUrl)
-        const json = res.data
-        const data = json.data
-
-        if (!data) return msg.reply(`✿ No se encontraron resultados para: ${url}`)
-
-        const caption = buildCaption(data)
-
-        if (isMp3) {
-          await sock.sendMessage(msg.chat, { image: { url: data.thumbnail }, caption }, { quoted: msg })
-          await sock.sendMessage(msg.chat, { 
-            audio: { url: data.dl }, 
-            mimetype: "audio/mpeg", 
-            fileName: `${data.title || "audio"}.mp3`, 
-            ptt: true 
-          }, { quoted: msg })
-        } else {
-          await sock.sendMessage(msg.chat, { 
-            [data.type || "video"]: { url: data.dl }, 
-            caption 
-          }, { quoted: msg })
-        }
-      } catch (e) {
-        console.error(e)
-        await msg.reply(msgglobal)
-      }
-      return
-    }
-
-    const query = args.filter(a => a !== "--mp3").join(" ")
-    if (!query) return msg.reply("✿ Ingresa un término de búsqueda.")
-
+  command: ['tiktok', 'tt', 'ttdl'],
+  category: 'downloader',
+  run: async ({ msg, sock }) => {
     try {
-      const searchUrl = `${api.url}/search/tiktok?query=${encodeURIComponent(query)}&key=${api.key}`
-      const res = await axios.get(searchUrl)
-      const json = res.data
-      const results = json.result
+      // Extraemos el enlace del texto
+      let textoCompleto = msg.text || msg.body || '';
+      const url = textoCompleto
+        .replace(/^[.\/!#]?(tiktok|tt|ttdl)\s*/i, '')
+        .trim();
 
-      if (!results || results.length === 0) {
-        return msg.reply(`❖ No se encontraron resultados para: ${query}`)
+      if (!url) {
+        return msg.reply(`✿ Ingresa un enlace de TikTok.\n\n*Ejemplo:* \`.tiktok https://vm.tiktok.com/xxxxx\``);
       }
 
-      if (isMp3) {
-        const chosen = results[0]
-        const tiktokUrl = `https://www.tiktok.com/@${chosen.author.unique_id}/video/${chosen.id}`
-        const apiUrl = `${api.url}/dl/tiktokmp3?url=${encodeURIComponent(tiktokUrl)}&key=${api.key}`
-
-        const res2 = await axios.get(apiUrl)
-        const json2 = res2.data
-        const data = json2.data
-
-        if (!data) return msg.reply("✿ No se pudo obtener el audio de este video.")
-
-        const caption = buildCaption(data)
-
-        await sock.sendMessage(msg.chat, { image: { url: data.thumbnail }, caption }, { quoted: msg })
-        await sock.sendMessage(msg.chat, { 
-          audio: { url: data.dl }, 
-          mimetype: "audio/mpeg", 
-          fileName: `${data.title || "audio"}.mp3` 
-        }, { quoted: msg })
-
-        return
+      if (!url.includes('tiktok.com')) {
+        return msg.reply('❌ El enlace no es válido. Debe ser de TikTok.');
       }
 
-      const medias = []
-      const resultsToSend = results.slice(0, 5)
+      // Llamamos a la API de descarga
+      const apiUrl = `${api.url}/download/tiktok?url=${encodeURIComponent(url)}&key=${api.key}`;
+      
+      console.log(`📥 [TIKTOK] Descargando: ${url}`);
 
-      for (const item of resultsToSend) {
-        const caption = buildCaption(item)
-        medias.push({
-          type: "video",
-          data: { url: item.dl },
-          caption
-        })
+      const res = await fetch(apiUrl);
+      const json = await res.json();
+
+      if (!json || !json.data) {
+        return msg.reply('❌ No se pudo obtener la información del video.');
       }
 
-      if (medias.length) {
-        await sock.sendAlbumMessage(msg.chat, medias, { quoted: msg })
-      } else {
-        await msg.reply("✿ No se pudieron procesar los resultados.")
+      const data = json.data;
+
+      // ✅ Detectamos la URL del video correctamente (varios formatos posibles)
+      const videoUrl = 
+        data.video?.play_addr?.url_list?.[0] || 
+        data.video?.download_addr?.url_list?.[0] ||
+        data.play ||
+        data.video ||
+        data.hdplay ||
+        data.wmplay;
+
+      if (!videoUrl) {
+        console.log('⚠️ [TIKTOK] Estructura de la API:', JSON.stringify(data, null, 2).slice(0, 500));
+        return msg.reply('❌ No se encontró el enlace del video. La API cambió su formato.');
       }
+
+      const titulo = data.title || data.desc || 'TikTok Video';
+      const autor = data.author?.nickname || data.author?.unique_id || 'Desconocido';
+
+      // ✅ ENVIAMOS EL VIDEO directamente (NO usamos sendAlbumMessage)
+      await sock.sendMessage(msg.chat, {
+        video: { url: videoUrl },
+        caption: `🎵 *${titulo}*\n\n> 👤 Autor: ${autor}\n> 🔗 ${url}`,
+        mimetype: 'video/mp4'
+      }, { quoted: msg });
+
+      console.log('✅ [TIKTOK] Video enviado correctamente.');
 
     } catch (e) {
-      console.error(e)
-      await msg.reply(msgglobal)
+      console.error('❌ [TIKTOK ERROR]:', e.message);
+      msg.reply(msgglobal || '❌ Ocurrió un error al descargar el video.');
     }
   },
-}
+};
