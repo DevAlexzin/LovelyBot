@@ -14,7 +14,6 @@ export default {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
-      // 1. Extraemos el texto
       let textoCompleto = msg.text || msg.body || '';
       let textoUsuario = textoCompleto
         .replace(/^[.\/!#]?(compe|competencia)\s*/i, '')
@@ -22,7 +21,7 @@ export default {
 
       const menciones = msg.mentionedJid || msg.mentions || [];
 
-      // 2. Si no hay datos, mostramos instrucciones
+      // Si no hay datos, mostramos instrucciones
       if (!textoUsuario || menciones.length === 0) {
         const instrucciones = `˖ ݁⋆.˚🏹 𝘾𝙤𝙢𝙥𝙚𝙩𝙚𝙣𝙘𝙞𝙖 𝙥𝙧𝙤𝙜𝙧𝙖𝙢𝙖𝙙𝙖
 
@@ -34,16 +33,17 @@ export default {
 *📌 Ejemplos:*
 \`.compe 18:00 arg @danizin @yaz @maia @rosee\`
 \`.compe 22:30 peru @danizin @yaz\`
-\`.compe 20:00 col @danizin @yaz\`
 
 *🌎 Zonas válidas:*
 \`arg\` (Argentina) · \`peru\` (Perú) · \`col\` (Colombia)
-\`mex\` (México) · \`chile\` (Chile) · \`esp\` (España)`;
+\`mex\` (México) · \`chile\` (Chile) · \`esp\` (España)
+
+> ⏰ El bot avisará *20 minutos antes*.`;
 
         return msg.reply(instrucciones);
       }
 
-      // 3. Detectamos la hora
+      // Detectamos la hora
       const horaMatch = textoUsuario.match(/(\d{1,2}):(\d{2})/);
 
       if (!horaMatch) {
@@ -57,7 +57,7 @@ export default {
         return msg.reply('❌ Hora no válida. Debe estar entre 00:00 y 23:59.');
       }
 
-      // 4. Detectamos la zona horaria
+      // Detectamos la zona horaria
       const zonas = {
         arg: { nombre: 'Argentina', tz: 'America/Argentina/Buenos_Aires', emoji: '🇦🇷' },
         peru: { nombre: 'Perú', tz: 'America/Lima', emoji: '🇵🇪' },
@@ -72,7 +72,6 @@ export default {
         uru: { nombre: 'Uruguay', tz: 'America/Montevideo', emoji: '🇺🇾' }
       };
 
-      // Buscamos alguna zona en el texto
       let zonaDetectada = null;
       const palabras = textoUsuario.toLowerCase().split(/\s+/);
       
@@ -88,31 +87,24 @@ export default {
         return msg.reply(`❌ No se detectó una zona horaria válida.\n\n*Zonas disponibles:*\n${Object.keys(zonas).map(z => `\`${z}\` (${zonas[z].nombre})`).join('\n')}\n\n*Ejemplo:* \`.compe 18:00 arg @jugadora1 @jugadora2\``);
       }
 
-      // 5. Verificamos menciones
       if (menciones.length < 2) {
         return msg.reply('❌ Debes mencionar al menos a 2 jugadoras.');
       }
 
-      // 6. Calculamos la fecha/hora EN LA ZONA HORARIA ESPECIFICADA
-      // Obtenemos la fecha actual en esa zona horaria
+      // Calculamos la fecha/hora en la zona horaria
       const ahora = new Date();
-      
-      // Obtenemos la fecha actual en formato de la zona horaria
       const fechaActualZona = new Date(
         ahora.toLocaleString('en-US', { timeZone: zonaDetectada.tz })
       );
       
-      // Creamos la fecha del versus con la hora especificada en esa zona
       const compeFechaLocal = new Date(fechaActualZona);
       compeFechaLocal.setHours(hora, minutos, 0, 0);
 
-      // Si ya pasó esa hora en la zona, la programamos para mañana
       if (compeFechaLocal <= fechaActualZona) {
         compeFechaLocal.setDate(compeFechaLocal.getDate() + 1);
       }
 
-      // ✅ Convertimos la hora local de la zona a UTC (que es lo que usa el servidor)
-      // Calculamos el offset entre la zona y UTC
+      // Convertimos a UTC
       const fechaUTC = new Date(
         compeFechaLocal.toLocaleString('en-US', { timeZone: 'UTC' })
       );
@@ -120,14 +112,12 @@ export default {
         compeFechaLocal.toLocaleString('en-US', { timeZone: zonaDetectada.tz })
       );
       const offset = fechaZona.getTime() - fechaUTC.getTime();
-      
-      // La hora real en UTC es: hora local - offset
       const compeUTC = new Date(compeFechaLocal.getTime() - offset);
 
-      // Hora de aviso (10 min antes en UTC)
-      const avisoUTC = new Date(compeUTC.getTime() - 10 * 60 * 1000);
+      // ✅ AVISO 20 MINUTOS ANTES (antes era 10)
+      const avisoUTC = new Date(compeUTC.getTime() - 20 * 60 * 1000);
 
-      // 7. Guardamos en la base de datos
+      // Guardamos en la base de datos
       const chatData = await db.getChat(msg.chat);
       const dbKey = 'compes_programadas';
       let compesProgramadas = chatData[dbKey] || [];
@@ -136,8 +126,8 @@ export default {
 
       compesProgramadas.push({
         id: Date.now().toString(),
-        horaCompe: compeUTC.toISOString(),      // Hora en UTC
-        horaAviso: avisoUTC.toISOString(),      // Aviso en UTC
+        horaCompe: compeUTC.toISOString(),
+        horaAviso: avisoUTC.toISOString(),
         horaLocal: `${hora.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`,
         zona: zonaDetectada.tz,
         zonaNombre: zonaDetectada.nombre,
@@ -150,33 +140,32 @@ export default {
 
       await db.updateChat(msg.chat, dbKey, compesProgramadas);
 
-      // 8. Formateamos para mostrar
+      // Formateamos para mostrar
       const horaFormateada = `${hora.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
       
-      // Formateamos la fecha según la zona horaria
       const fechaFormateada = compeFechaLocal.toLocaleString('es-ES', {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
       });
 
-      // Hora de aviso (10 min antes en hora local)
-      const avisoLocalDate = new Date(compeFechaLocal.getTime() - 10 * 60 * 1000);
+      // ✅ Hora de aviso 20 min antes
+      const avisoLocalDate = new Date(compeFechaLocal.getTime() - 20 * 60 * 1000);
       const avisoLocal = `${avisoLocalDate.getHours().toString().padStart(2, '0')}:${avisoLocalDate.getMinutes().toString().padStart(2, '0')}`;
 
       const mentionsFinal = menciones;
       const listaJugadoras = menciones.map(j => `@${j.split('@')[0]}`).join('\n');
 
-      // 9. Enviamos confirmación
+      // Mensaje de confirmación
       const compeMsg = `✅ *Competencia programada correctamente*
 
 > 📅 *Fecha:* ${fechaFormateada}
 > ⏰ *Hora:* ${horaFormateada} ${zonaDetectada.emoji} (${zonaDetectada.nombre})
-> 🔔 *Aviso:* ${avisoLocal} ${zonaDetectada.emoji} (10 min antes)
+> 🔔 *Aviso:* ${avisoLocal} ${zonaDetectada.emoji} (20 min antes)
 > 👥 *Jugadoras (${menciones.length}):*
 ${listaJugadoras}
 
-> 💡 El bot las etiquetará 10 minutos antes.`;
+> 💡 El bot las etiquetará 20 minutos antes.`;
 
       await sock.sendMessage(msg.chat, {
         text: compeMsg,
