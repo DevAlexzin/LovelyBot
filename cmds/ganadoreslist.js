@@ -57,9 +57,9 @@ export default {
         
         const items = ganadores[dia.key] || [];
         
-        // ✅ Mostramos los ganadores CON su premio
+        // ✅ Mostramos los ganadores con el formato completo: numero/premio/nombre
         for (const item of items) {
-          listaMsg += `⋆${dia.emoji}⋆ ${item.nombre} — ${item.premio}\n`;
+          listaMsg += `⋆${dia.emoji}⋆ ${item.numero}/${item.premio}/${item.nombre}\n`;
         }
 
         // ✅ Calculamos cuántas casillas vacías agregar
@@ -76,11 +76,11 @@ export default {
       }
 
       // 7. Extras
-      listaMsg += `\n்⋆ ✮ ExtrᲐs\n`;
+      listaMsg += `\n்⋆ ✮ Extrᥲs\n`;
       const extras = ganadores.extras || [];
       
       for (const item of extras) {
-        listaMsg += `⋆🌈⋆ ${item.nombre} — ${item.premio}\n`;
+        listaMsg += `⋆🌈⋆ ${item.numero}/${item.premio}/${item.nombre}\n`;
       }
       
       const totalExtras = Math.max(3, extras.length + 1);
