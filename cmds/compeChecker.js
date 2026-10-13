@@ -1,7 +1,7 @@
 import db from "#db"
 
 export function iniciarCompeChecker(sock) {
-  console.log('🎲 [COMPE CHECKER] Sistema de avisos iniciado.');
+  console.log('🎲 [COMPE CHECKER] Sistema de avisos iniciado (20 min antes).');
 
   setInterval(async () => {
     try {
@@ -34,12 +34,12 @@ export function iniciarCompeChecker(sock) {
             const mentionsFinal = compe.jugadoras.map(j => j + '@s.whatsapp.net');
             const listaJugadoras = compe.jugadoras.map(j => `@${j}`).join('\n');
             
-            // ✅ Mostramos la hora en la zona horaria original
             const horaMostrar = compe.horaLocal || horaCompe.toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' });
             const zonaMostrar = compe.zonaEmoji || '';
             const zonaNombre = compe.zonaNombre || '';
 
-            const mensajeAviso = `🔔 *¡COMPETENCIA EN 10 MINUTOS!*
+            // ✅ Mensaje actualizado a 20 minutos
+            const mensajeAviso = `🔔 *¡COMPETENCIA EN 20 MINUTOS!*
 
 > ⏰ *Hora:* ${horaMostrar} ${zonaMostrar} ${zonaNombre ? `(${zonaNombre})` : ''}
 > 👥 *Jugadoras:*
