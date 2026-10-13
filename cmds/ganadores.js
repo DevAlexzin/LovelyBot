@@ -6,24 +6,17 @@ export default {
   isAdmin: true,
   botAdmin: false,
   run: async ({ msg, sock }) => {
-    console.log("========================================");
-    console.log("🔍 [DEBUG] Comando 'ganadores' ejecutado.");
-    console.log("========================================");
-
     try {
       if (!msg.isGroup) {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
-      // 1. Extraemos el texto que escribió el admin
       let textoCompleto = msg.text || msg.body || '';
       let textoUsuario = textoCompleto
         .replace(/^[.\/!#]?(ganadores|ganador)\s*/i, '')
         .trim();
 
-      // ============================================================
       // CASO 1: NO HAY DATOS → MOSTRAR INSTRUCCIONES
-      // ============================================================
       if (!textoUsuario) {
         const instrucciones = `˖ . 𖥔 ݁ ˖ .𝙇𝙞𝙨𝙩𝙖 𝙙𝙚 𝙜𝙖𝙣𝙖𝙙𝙤𝙧𝙚𝙨 🌷
 
@@ -40,22 +33,45 @@ export default {
         return msg.reply(instrucciones);
       }
 
-      // ============================================================
-      // CASO 2: HAY DATOS → PROCESAR Y MOSTRAR BOTONES
-      // ============================================================
-      
-      // Verificamos que tenga el formato correcto (3 partes separadas por /)
+      // CASO 2: HAY DATOS → VALIDAR Y MOSTRAR BOTONES
       const partes = textoUsuario.split('/').map(p => p.trim());
 
       if (partes.length < 3) {
         return msg.reply('❌ *Formato incorrecto.*\n\nDebes usar:\n`numero/premio/nombre`\n\n*Ejemplo:*\n`+5492914619852/cali/rosee`');
       }
 
-      const numero = partes[0];
+      const numero = partes[0].replace(/\D/g, '');
       const premio = partes[1];
       const nombre = partes[2];
 
-      // Guardamos los datos temporalmente en memoria
+      if (!numero || numero.length < 8) {
+        return msg.reply('❌ El número no es válido. Debe tener al menos 8 dígitos.\n\n*Ejemplo:* `+5492914619852/cali/rosee`');
+      }
+
+      // ✅ VALIDACIÓN: Verificar cuántas veces ha ganado esta semana
+      const ahora = new Date();
+      const año = ahora.getFullYear();
+      const inicioAño = new Date(año, 0, 1);
+      const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
+      const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
+
+      const chatData = await db.getChat(msg.chat);
+      const dbKey = `ganadores_semana_${año}_${semana}`;
+      let ganadores = chatData[dbKey] || {
+        lunes: [], martes: [], miercoles: [], jueves: [], viernes: [], sabado: [], extras: []
+      };
+
+      let vecesGanadas = 0;
+      for (const key of ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'extras']) {
+        const items = ganadores[key] || [];
+        vecesGanadas += items.filter(item => item.numero === numero).length;
+      }
+
+      if (vecesGanadas >= 2) {
+        return msg.reply(`⚠️ *Este número ya ganó 2 veces esta semana.*\n\n> 📱 Número: ${numero}\n> 👤 Nombre: ${nombre}\n\n*No puede ganar más de 2 veces por semana.*`);
+      }
+
+      // Guardamos los datos temporalmente
       global.ganadoresTemporal = global.ganadoresTemporal || {};
       global.ganadoresTemporal[msg.chat] = {
         numero: numero,
@@ -65,16 +81,15 @@ export default {
         timestamp: Date.now()
       };
 
-      console.log(`📌 [GANADORES] Datos temporales guardados: ${numero}/${premio}/${nombre}`);
-
-      // Mostramos los botones para elegir el día
+      // ✅ Botones (6 días + Extras, SIN MVP)
       const botones = [
         { buttonId: 'ganadores_lunes', buttonText: { displayText: '🍯 Lunes' }, type: 1 },
         { buttonId: 'ganadores_martes', buttonText: { displayText: '🍒 Martes' }, type: 1 },
         { buttonId: 'ganadores_miercoles', buttonText: { displayText: '🪩 Miércoles' }, type: 1 },
         { buttonId: 'ganadores_jueves', buttonText: { displayText: '👯‍♀️ Jueves' }, type: 1 },
         { buttonId: 'ganadores_viernes', buttonText: { displayText: '🏹 Viernes' }, type: 1 },
-        { buttonId: 'ganadores_sabado', buttonText: { displayText: '🌈 Sábado' }, type: 1 }
+        { buttonId: 'ganadores_sabado', buttonText: { displayText: '🌈 Sábado' }, type: 1 },
+        { buttonId: 'ganadores_extras', buttonText: { displayText: '✨ Extras' }, type: 1 }
       ];
 
       const mensajeBotones = `✅ *Datos recibidos correctamente*
@@ -82,6 +97,7 @@ export default {
 > 📱 Número: ${numero}
 > 🎁 Premio: ${premio}
 > 👤 Nombre: ${nombre}
+> 📊 Veces ganadas esta semana: ${vecesGanadas}/2
 
 > 👇 *Selecciona el día para anotar al ganador:*`;
 
