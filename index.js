@@ -13,7 +13,7 @@ import cmdsLoader from '#cmdsloader';
 import "#db";
 import { startSubBot } from '#subs';
 import db from '#db';
-import { iniciarCompeChecker } from './compeChecker.js';
+import { iniciarCompeChecker } from './cmds/compeChecker.js';
 
 const log = {
   info: (msg) => console.log(chalk.bgBlue.white.bold(` INFO `), chalk.white(msg)),
