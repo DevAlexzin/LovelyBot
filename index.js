@@ -13,6 +13,7 @@ import cmdsLoader from '#cmdsloader';
 import "#db";
 import { startSubBot } from '#subs';
 import db from '#db';
+import { iniciarCompeChecker } from './compeChecker.js';
 
 const log = {
   info: (msg) => console.log(chalk.bgBlue.white.bold(` INFO `), chalk.white(msg)),
@@ -233,6 +234,13 @@ export async function startBot() {
       log.success(`Conectado a: ${userName}`);
       if (!botReady) {
         botReady = true;
+        // ✅ INICIAMOS EL CHECKER DE COMPETENCIAS
+        try {
+          iniciarCompeChecker(sock);
+          log.success('Sistema de competencias programadas iniciado.');
+        } catch (err) {
+          log.error(`Error iniciando compeChecker: ${err.message}`);
+        }
       }
     }
     if (isNewLogin) log.info("Nuevo dispositivo detectado");
