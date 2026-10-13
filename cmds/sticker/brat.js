@@ -33,12 +33,19 @@ export default {
 
       // 4. Codificamos el texto
       const textoCodificado = encodeURIComponent(texto).replace(/%20/g, '+');
-      const apiUrl = `https://api.delirius.store/canvas/brat?text=${textoCodificado}`;
+      const apiUrl = `https://api.delirius.online/canvas/brat?text=${textoCodificado}`;
 
       console.log(`🌐 [DEBUG] Descargando de: ${apiUrl}`);
 
-      // 5. Descargamos la imagen de la API
-      const response = await fetch(apiUrl);
+      // 5. Descargamos la imagen de la API con headers de navegador
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/*,*/*;q=0.8',
+          'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -48,7 +55,20 @@ export default {
 
       console.log(`✅ [DEBUG] Imagen descargada: ${imagenBuffer.length} bytes`);
 
-      // 6. Convertimos a WebP con sharp (formato óptimo para stickers)
+      // 6. Verificamos que sea una imagen válida
+      const headerHex = imagenBuffer.slice(0, 4).toString('hex');
+      console.log(`🔍 [DEBUG] Header: ${headerHex}`);
+
+      const esImagenValida =
+        headerHex.startsWith('89504e47') || // PNG
+        headerHex.startsWith('ffd8ff') ||   // JPG
+        headerHex.startsWith('52494646');   // WebP
+
+      if (!esImagenValida) {
+        throw new Error('La API no devolvió una imagen válida.');
+      }
+
+      // 7. Convertimos a WebP con sharp
       try {
         imagenBuffer = await sharp(imagenBuffer)
           .resize(512, 512, {
@@ -66,7 +86,7 @@ export default {
         console.log('⚠️ [DEBUG] Sharp falló, usando imagen original:', sharpError.message);
       }
 
-      // 7. Enviamos como sticker
+      // 8. Enviamos como sticker
       await sock.sendMessage(msg.chat, {
         sticker: imagenBuffer,
         mimetype: 'image/webp'
