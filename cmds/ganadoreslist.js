@@ -57,13 +57,14 @@ export default {
         
         const items = ganadores[dia.key] || [];
         
-        // ✅ Mostramos los ganadores reales
+        // ✅ Mostramos los ganadores CON su premio
         for (const item of items) {
-          listaMsg += `⋆${dia.emoji}⋆ ${item.nombre}\n`;
+          listaMsg += `⋆${dia.emoji}⋆ ${item.nombre} — ${item.premio}\n`;
         }
 
-        // ✅ Calculamos cuántas casillas vacías agregar (mínimo 5 en total)
-        const totalMostrar = Math.max(5, items.length);
+        // ✅ Calculamos cuántas casillas vacías agregar
+        // Siempre al menos 5 casillas, y si se llenan todas, se agrega 1 más
+        const totalMostrar = Math.max(5, items.length + 1);
         const vacias = totalMostrar - items.length;
         
         for (let i = 0; i < vacias; i++) {
@@ -74,15 +75,15 @@ export default {
         listaMsg += `\n         ‧ ₊˚ . ⁺‧˖ ݁⋆✮⁺‧˖ ݁⋆‧ ₊˚ . ⁺‧\n`;
       }
 
-      // 7. Extras (también con mínimo 3 casillas)
-      listaMsg += `\n்⋆ ✮ Extrᥲs\n`;
+      // 7. Extras
+      listaMsg += `\n்⋆ ✮ ExtrᲐs\n`;
       const extras = ganadores.extras || [];
       
       for (const item of extras) {
-        listaMsg += `⋆🌈⋆ ${item.nombre}\n`;
+        listaMsg += `⋆🌈⋆ ${item.nombre} — ${item.premio}\n`;
       }
       
-      const totalExtras = Math.max(3, extras.length);
+      const totalExtras = Math.max(3, extras.length + 1);
       const vaciasExtras = totalExtras - extras.length;
       
       for (let i = 0; i < vaciasExtras; i++) {
