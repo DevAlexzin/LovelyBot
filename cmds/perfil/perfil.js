@@ -10,18 +10,56 @@ export default {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
+      // 1. Extraemos el texto después del comando
+      let textoCompleto = msg.text || msg.body || '';
+      const texto = textoCompleto
+        .replace(/^[.\/!#]?(perfil|profile|jugadora)\s*/i, '')
+        .trim();
+
+      // 2. Detectamos menciones
       const menciones = msg.mentionedJid || msg.mentions || [];
-      const usuarioId = menciones.length > 0
-        ? menciones[0].split('@')[0]
-        : msg.sender.split('@')[0];
 
-      const dbKey = `perfil_${usuarioId}`;
       const chatData = await db.getChat(msg.chat);
-      const perfil = chatData[dbKey];
 
+      let perfil = null;
+      let usuarioId = null;
+
+      // ✅ CASO 1: Si mencionó a alguien
+      if (menciones.length > 0) {
+        usuarioId = menciones[0].split('@')[0];
+        perfil = chatData[`perfil_${usuarioId}`];
+      }
+      // ✅ CASO 2: Si escribió un nombre (ej: .perfil sofia)
+      else if (texto) {
+        const nombreBuscado = texto.toLowerCase().trim();
+        
+        // Buscamos en todos los perfiles
+        for (const [key, value] of Object.entries(chatData)) {
+          if (key.startsWith('perfil_') && value && typeof value === 'object') {
+            const nombreP = (value.nombre || '').toLowerCase().trim();
+            const nickP = (value.nickFf || '').toLowerCase().trim();
+            
+            if (nombreP === nombreBuscado || nickP === nombreBuscado) {
+              perfil = value;
+              usuarioId = value.id;
+              break;
+            }
+          }
+        }
+      }
+      // ✅ CASO 3: Sin mención ni nombre → usar el propio usuario
+      else {
+        usuarioId = msg.sender.split('@')[0];
+        perfil = chatData[`perfil_${usuarioId}`];
+      }
+
+      // Si no se encontró el perfil
       if (!perfil) {
         if (menciones.length > 0) {
-          return msg.reply(`❌ @${usuarioId} no está registrada.\n\n> Usa \`.reg @${usuarioId} nick/tag/modo/nombre/edad/país/cumple\` para registrarla.`);
+          return msg.reply(`❌ @${usuarioId} no está registrada.\n\n> Usa \`.reg @${usuarioId} nick/tag/modo/nombre/edad/país/cumple\``);
+        }
+        if (texto) {
+          return msg.reply(`❌ No se encontró un perfil con el nombre *${texto}*.\n\n> Verifica que esté registrada o usa su mención.`);
         }
         return msg.reply(`❌ No estás registrada.\n\n> Usa \`.reg\` para registrarte.`);
       }
@@ -55,7 +93,8 @@ export default {
 ꒰ঌ ◜⁺⋆⋎⋆⁺◝ ໒꒱ 
 .     ⋱˛  ˛⋰`;
 
-      const mentionsFinal = menciones.length > 0 ? menciones : [msg.sender];
+      // Mencionamos al usuario del perfil
+      const mentionsFinal = usuarioId ? [usuarioId + '@s.whatsapp.net'] : [msg.sender];
 
       await sock.sendMessage(msg.chat, {
         text: perfilMsg.trim(),
