@@ -35,18 +35,25 @@ export default {
 6️⃣ País
 7️⃣ Fecha de cumpleaños
 
-> 💡 También puedes registrar a alguien más mencionándola:
-> \`.reg @jugadora nick_ff/tag/...\``;
+> 💡 *Para registrar a otra persona:*
+> \`.reg @jugadora nick_ff/tag/modo/nombre/edad/país/cumple\``;
 
         return msg.reply(formato);
       }
 
       const menciones = msg.mentionedJid || msg.mentions || [];
-      const usuarioId = menciones.length > 0
+      
+      // ✅ CLAVE: Determinamos a QUIÉN estamos registrando
+      // Si hay mención → registramos al mencionado
+      // Si NO hay mención → registramos al que escribe
+      const hayMencion = menciones.length > 0;
+      const usuarioId = hayMencion
         ? menciones[0].split('@')[0]
         : msg.sender.split('@')[0];
 
-      const esOtro = menciones.length > 0 && usuarioId !== msg.sender.split('@')[0];
+      const esOtro = hayMencion && usuarioId !== msg.sender.split('@')[0];
+
+      console.log(`📝 [REG] Registrando a: ${usuarioId} (${esOtro ? 'admin registra a otra' : 'auto-registro'})`);
 
       const partes = texto.split('/').map(p => p.trim());
 
@@ -62,16 +69,19 @@ export default {
       const pais = partes[5];
       const cumple = partes[6];
 
+      // ✅ Usamos la clave del PERFIL DEL USUARIO OBJETIVO (no del admin)
       const dbKey = `perfil_${usuarioId}`;
       const chatData = await db.getChat(msg.chat);
       const perfilExistente = chatData[dbKey];
 
-      // ✅ VERIFICAMOS SI YA ESTÁ REGISTRADA (por ID de WhatsApp)
+      console.log(`🔍 [REG] Buscando perfil existente en: ${dbKey} → ${perfilExistente ? 'ENCONTRADO' : 'NO EXISTE'}`);
+
+      // ✅ VALIDACIÓN: Si YA está registrado (solo validamos al usuario objetivo)
       if (perfilExistente) {
-        const mentionsFinal = menciones.length > 0 ? menciones : [msg.sender];
+        const mentionsFinal = hayMencion ? menciones : [msg.sender];
         
         return sock.sendMessage(msg.chat, {
-          text: `⚠️ *${esOtro ? `@${usuarioId}` : 'Ya'} ${esOtro ? 'ya está registrada' : 'estás registrada'}.*
+          text: `⚠️ *${esOtro ? `@${usuarioId}` : 'Ya estás'} ${esOtro ? 'ya está registrada' : 'registrada'}.*
 
 > 👤 Nick: ${perfilExistente.nickFf}
 > 🏷️ Tag: ${perfilExistente.tag}
@@ -82,12 +92,12 @@ export default {
 > 🎂 Cumple: ${perfilExistente.cumple}
 
 > 💡 Usa \`.perfil${esOtro ? ` @${usuarioId}` : ''}\` para ver el perfil completo.
-> ⚠️ Si quieres actualizar tus datos, avisa a un administrador.`,
+> ⚠️ Si quieres actualizar los datos, avisa a un administrador.`,
           mentions: mentionsFinal
         }, { quoted: msg });
       }
 
-      // ✅ Si NO está registrada, la registramos
+      // ✅ Si NO está registrado, lo registramos
       const perfil = {
         id: usuarioId,
         nickFf,
@@ -104,7 +114,9 @@ export default {
 
       await db.updateChat(msg.chat, dbKey, perfil);
 
-      const mentionsFinal = menciones.length > 0 ? menciones : [msg.sender];
+      console.log(`✅ [REG] Perfil guardado en: ${dbKey}`);
+
+      const mentionsFinal = hayMencion ? menciones : [msg.sender];
 
       await sock.sendMessage(msg.chat, {
         text: `✅ *¡Registro exitoso${esOtro ? ` de @${usuarioId}` : ''}!*
@@ -123,6 +135,7 @@ export default {
 
     } catch (e) {
       console.error("❌ [REG ERROR]:", e.message);
+      console.error("   Stack:", e.stack);
       msg.reply('❌ Ocurrió un error al procesar el registro.');
     }
   },
