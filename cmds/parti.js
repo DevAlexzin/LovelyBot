@@ -9,6 +9,15 @@ const EMOJIS_DIAS = {
   6: '❤️'
 }
 
+// ✅ Función para limpiar emojis y comandos del nombre
+function limpiarNombre(texto) {
+  return texto
+    .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '') // Quita emojis
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default {
   command: ['parti', 'participacion'],
   category: 'grupo',
@@ -20,9 +29,7 @@ export default {
       }
 
       let textoCompleto = msg.text || msg.body || '';
-      let textoUsuario = textoCompleto
-        .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
-        .trim();
+      let textoUsuario = limpiarNombre(textoCompleto);
 
       const ahora = new Date();
       const año = ahora.getFullYear();
@@ -42,8 +49,22 @@ export default {
       let registros = chatData[dbKey] || [];
 
       const usuarioId = msg.sender.split('@')[0];
+
+      // ✅ Buscamos primero por ID de usuario
       let usuarioRegistrado = registros.find(r => r.id === usuarioId);
 
+      // ✅ Si no lo encuentra por ID, buscamos por nombre
+      if (!usuarioRegistrado && textoUsuario) {
+        usuarioRegistrado = registros.find(
+          r => r.nombre.toLowerCase().trim() === textoUsuario.toLowerCase().trim()
+        );
+        // Si lo encuentra por nombre, le actualizamos el ID
+        if (usuarioRegistrado) {
+          usuarioRegistrado.id = usuarioId;
+        }
+      }
+
+      // Si no existe, lo registramos
       if (!usuarioRegistrado) {
         if (!textoUsuario) {
           return msg.reply('❌ Debes registrarte primero. Ejemplo: `.parti Tokyo`');
@@ -58,7 +79,7 @@ export default {
         registros.push(usuarioRegistrado);
       }
 
-      // Agregamos el corazón
+      // ✅ Agregamos el corazón (sin límite)
       usuarioRegistrado.corazones.push(emojiDia);
 
       await db.updateChat(msg.chat, dbKey, registros);
@@ -75,9 +96,7 @@ export default {
       // Construimos la lista
       let listaParticipantes = '';
       for (const reg of registros) {
-        const nombreLimpio = reg.nombre
-          .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
-          .trim();
+        const nombreLimpio = limpiarNombre(reg.nombre);
         
         const corazones = reg.corazones.length > 0 
           ? reg.corazones.join(' ') 
@@ -91,7 +110,7 @@ export default {
 
 ─⋆ Mvρ 🍯
 ─⋆ Pᥲrtιᥴιρᥲᥴιoᥒ
-ㅤ.₊‧ʚɞ‧₊Sᥱmᥲᥒᥲ
+ㅤ.₊‧ʚɞ‧₊SᥱmᲐᥒᥲ
 𝗟💙/𝗠🩷/𝗠💜/𝗝💛/𝗩💚/𝗦❤️
 
 ⌢.⌢.⌢.꒰⌢୨୧⌢꒱.⌢.⌢.⌢
