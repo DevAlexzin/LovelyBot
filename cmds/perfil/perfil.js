@@ -10,13 +10,12 @@ export default {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
-      // 1. Extraemos el texto después del comando
       let textoCompleto = msg.text || msg.body || '';
       const texto = textoCompleto
         .replace(/^[.\/!#]?(perfil|profile|jugadora)\s*/i, '')
         .trim();
 
-      // 2. Detectamos menciones de forma robusta
+      // Detección robusta de menciones
       let menciones = [];
       if (msg.mentionedJid?.length > 0) menciones = msg.mentionedJid;
       else if (msg.mentions?.length > 0) menciones = msg.mentions;
@@ -27,7 +26,6 @@ export default {
         menciones = msg.message.contextInfo.mentionedJid;
       }
 
-      // ✅ Si no hay menciones detectadas, las extraemos del texto
       if (menciones.length === 0) {
         const textoOriginal = msg.text || msg.body || '';
         const regexMencion = /@(\d{8,15})/g;
@@ -87,7 +85,7 @@ export default {
       const mvpTotales = perfil.mvpTotales || 0;
       const versusJugados = perfil.versusJugados || 0;
 
-      // ✅ Mención del usuario (aparece en el campo "Nombre")
+      // Mención del usuario (aparece en "Nombre")
       const mencionUsuario = `@${usuarioId}`;
 
       const perfilMsg = `┈─˖Ი𐑼⋆ 𝗣𝗲𝗿𝗳𝗶𝗹 𝗷𝘂𝗴𝗮𝗱𝗼𝗿𝗮  
@@ -104,7 +102,7 @@ export default {
 
 ˖.𖥔 ݁ ˖. 𝗖𝗼𝗺𝗽𝗲𝘁𝗶𝘁𝗶𝘃𝗼 ! ⊹ ࣪ ˖ ᨐฅ  
 ᭝ 🌈 ՟ 𝓝𝓲𝓬𝓴 𝓯𝓯 ⸝⸝ ${perfil.nickFf}
-᭝ 🌼 ՟ 𝓣𝓪g ⸝⸝ ${perfil.tag}
+᭝ 🌼 ՟ 𝓣𝓪𝓰 ⸝⸝ ${perfil.tag}
 ᭝ 🌈 ՟ 𝓜𝓸𝓭𝓸 𝓯𝓪𝓿 ⸝⸝ ${perfil.modoFav}
 
 ˖.𖥔 ݁ ˖. 𝗩𝗲𝗿𝘀𝘂𝘀 ! ⊹ ࣪ ˖ ᨐฅ 
@@ -116,7 +114,6 @@ export default {
 ꒰ঌ ◜⁺⋆⋎⋆⁺◝ ໒꒱ 
 .     ⋱˛  ˛⋰`;
 
-      // ✅ Mención al usuario
       const mentionsFinal = [usuarioId + '@s.whatsapp.net'];
 
       await sock.sendMessage(msg.chat, {
