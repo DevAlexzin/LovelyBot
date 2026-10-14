@@ -65,7 +65,7 @@ export default {
           nombreObjetivo = usuarioObjetivoId;
         }
       } else {
-        // Si no mencionó, buscamos por nombre en el texto
+        // Si no mencionó, buscamos por nombre
         nombreObjetivo = textoUsuario
           .replace(corazonEncontrado, '')
           .trim();
@@ -74,24 +74,46 @@ export default {
           return msg.reply('❌ Debes mencionar a alguien o escribir su nombre.\n\n*Ejemplo:* `.parti @usuario 💙`');
         }
 
-        // Buscamos si ese nombre ya existe
-        const registroExistente = registros.find(
-          r => r.nombre.toLowerCase() === nombreObjetivo.toLowerCase()
-        );
+        usuarioObjetivoId = nombreObjetivo.toLowerCase();
+      }
 
-        if (registroExistente) {
-          usuarioObjetivoId = registroExistente.id;
-        } else {
-          usuarioObjetivoId = nombreObjetivo.toLowerCase();
+      // ✅ 6. BUSCAMOS EL PERFIL POR NOMBRE (esto es la clave)
+      let perfilKeyReal = null;
+      const nombreBuscado = (nombreObjetivo || '').toLowerCase().trim();
+
+      console.log(`🔍 [PARTI] Buscando perfil para: "${nombreBuscado}"`);
+
+      for (const [key, value] of Object.entries(chatData)) {
+        if (key.startsWith('perfil_') && value && typeof value === 'object') {
+          const nombreP = (value.nombre || '').toLowerCase().trim();
+          const nickP = (value.nickFf || '').toLowerCase().trim();
+          
+          console.log(`   → Comparando con: "${nombreP}" / "${nickP}" (${key})`);
+
+          if (nombreP === nombreBuscado || nickP === nombreBuscado) {
+            perfilKeyReal = key;
+            usuarioObjetivoId = value.id; // ✅ Usamos el ID real
+            console.log(`✅ [PARTI] Perfil encontrado: ${key} → ID: ${usuarioObjetivoId}`);
+            break;
+          }
         }
       }
 
-      if (!usuarioObjetivoId) {
-        return msg.reply('❌ No se pudo identificar a la persona.');
+      if (!perfilKeyReal) {
+        console.log(`⚠️ [PARTI] No se encontró perfil para "${nombreBuscado}"`);
       }
 
-      // 6. Buscamos si ya está registrada
+      // 7. Buscamos si ya está en la lista de participaciones
       let personaRegistrada = registros.find(r => r.id === usuarioObjetivoId);
+
+      if (!personaRegistrada && nombreObjetivo) {
+        personaRegistrada = registros.find(
+          r => r.nombre.toLowerCase().trim() === nombreObjetivo.toLowerCase().trim()
+        );
+        if (personaRegistrada) {
+          personaRegistrada.id = usuarioObjetivoId;
+        }
+      }
 
       if (!personaRegistrada) {
         personaRegistrada = {
@@ -103,26 +125,27 @@ export default {
         registros.push(personaRegistrada);
       }
 
-      // 7. Agregamos el corazón
+      // 8. Agregamos el corazón
       personaRegistrada.corazones.push(corazonEncontrado);
 
-      // 8. Guardamos la participación
+      // 9. Guardamos la participación
       await db.updateChat(msg.chat, dbKey, registros);
 
-      // ✅ 9. CONEXIÓN CON EL PERFIL
-      // Si el usuario objetivo tiene perfil, sumamos +1 versus jugado
-      const perfilKey = `perfil_${usuarioObjetivoId}`;
-      const chatDataActualizado = await db.getChat(msg.chat);
-
-      if (chatDataActualizado[perfilKey]) {
-        chatDataActualizado[perfilKey].versusJugados = (chatDataActualizado[perfilKey].versusJugados || 0) + 1;
-        await db.updateChat(msg.chat, perfilKey, chatDataActualizado[perfilKey]);
-        console.log(`📊 [PARTI → PERFIL] ${chatDataActualizado[perfilKey].nombre} ahora tiene ${chatDataActualizado[perfilKey].versusJugados} versus jugados`);
+      // ✅ 10. CONEXIÓN CON EL PERFIL (usando la key real encontrada)
+      if (perfilKeyReal) {
+        const chatDataActualizado = await db.getChat(msg.chat);
+        const perfil = chatDataActualizado[perfilKeyReal];
+        
+        if (perfil) {
+          perfil.versusJugados = (perfil.versusJugados || 0) + 1;
+          await db.updateChat(msg.chat, perfilKeyReal, perfil);
+          console.log(`📊 [PARTI → PERFIL] ${perfil.nombre} ahora tiene ${perfil.versusJugados} versus jugados`);
+        }
       } else {
-        console.log(`⚠️ [PARTI] No se encontró perfil para @${usuarioObjetivoId}`);
+        console.log(`⚠️ [PARTI] No se pudo sumar al perfil (no se encontró)`);
       }
 
-      // 10. Construimos la lista
+      // 11. Construimos la lista
       let listaParticipantes = '';
       for (const reg of registros) {
         const nombreLimpio = reg.nombre
@@ -149,7 +172,6 @@ export default {
 ${listaParticipantes}
 *Total de participantes:* ${registros.length}`;
 
-      // 11. Enviamos
       await sock.sendMessage(msg.chat, {
         text: participacionMsg.trim(),
         mentions: usuarioObjetivoId.includes('@') ? [usuarioObjetivoId] : []
