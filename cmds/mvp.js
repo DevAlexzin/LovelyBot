@@ -25,15 +25,15 @@ export default {
         const instrucciones = `⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
 
 *📋 Formato para anotar:*
-\`.mvp nombre1/kills1/nombre2/kills2/nombre3/kills3\`
+\`.mvp nombre1/kills1/nombre2/kills2\`
 
 *📌 Ejemplo:*
-\`.mvp Daniel/15/Rocio/12/Yaz/8\`
+\`.mvp Daniel/15/Rocio/12\`
 
 > 💡 El orden es:
 > 1️⃣ Sala 1 (Nombre/Kills)
 > 2️⃣ Sala 2 (Nombre/Kills)
-> 3️⃣ Final (Nombre/Kills)`;
+> 🏆 La final se elige automáticamente (quien tenga más kills)`;
 
         return msg.reply(instrucciones);
       }
@@ -41,32 +41,23 @@ export default {
       // 3. Separamos los datos por "/"
       const partes = textoUsuario.split('/').map(p => p.trim());
 
-      if (partes.length < 6) {
-        return msg.reply('❌ *Faltan datos.*\n\nDebes poner 6 valores separados por `/`:\n\`nombre1/kills1/nombre2/kills2/nombre3/kills3\`\n\n*Ejemplo:*\n\`.mvp Daniel/15/Rocio/12/Yaz/8\`');
+      if (partes.length < 4) {
+        return msg.reply('❌ *Faltan datos.*\n\nDebes poner 4 valores separados por `/`:\n\`nombre1/kills1/nombre2/kills2\`\n\n*Ejemplo:*\n\`.mvp Daniel/15/Rocio/12\`');
       }
 
       // 4. Asignamos los datos
       const sala1 = { nombre: partes[0], kills: parseInt(partes[1]) || 0 };
       const sala2 = { nombre: partes[2], kills: parseInt(partes[3]) || 0 };
-      const final = { nombre: partes[4], kills: parseInt(partes[5]) || 0 };
 
-      // 5. Determinamos el ganador general (el que más kills tiene en total)
-      // Sumamos kills por nombre (por si aparece en varias salas)
-      const totalKills = {};
-      
-      [sala1, sala2, final].forEach(j => {
-        if (!totalKills[j.nombre]) totalKills[j.nombre] = 0;
-        totalKills[j.nombre] += j.kills;
-      });
+      // 5. Determinamos el ganador (el que más kills tiene)
+      let ganadorFinal;
+      if (sala1.kills >= sala2.kills) {
+        ganadorFinal = sala1;
+      } else {
+        ganadorFinal = sala2;
+      }
 
-      // Ordenamos de mayor a menor
-      const ranking = Object.entries(totalKills)
-        .sort((a, b) => b[1] - a[1]);
-
-      const ganadorGeneral = ranking[0];
-      const medalla = ['🥇', '🥈', '🥉'];
-
-      // 6. Construimos el mensaje con el formato que pediste
+      // 6. Construimos el mensaje
       const mvpMsg = `⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
 
 ⭒˚ ᵎᵎ✮🍒 𝓟𝓼𝔂𝓬𝓱𝓸𝓼𝓲𝓽𝓪 𝓼𝓪𝓵𝓪 𝟏 
@@ -78,20 +69,13 @@ export default {
 ╴ᨳ Kιᥣᥣs ▸ › ${sala2.kills}
 
 ⭒˚ ᵎᵎ✮🎠 𝓟𝓼𝔂𝓬𝓱𝓸𝓼𝓲𝓽𝓪 𝓯𝓲𝓷𝓪𝓵
-╴ᨳ Nombrᥱ ▸ › ${final.nombre}
-╴ᨳ Kιᥣᥣs ▸ › ${final.kills}
-
-⌢ .⌢ . ⌢ . ꒰ ⌢୨୧⌢ ꒱ . ⌢ . ⌢. ⌢
-
-🏆 *𝑮𝒂𝒏𝒂𝒅𝒐𝒓 𝒈𝒆𝒏𝒆𝒓𝒂𝒍:*
-${medalla.slice(0, ranking.length).map((m, i) => `${m} ${ranking[i][0]} — ${ranking[i][1]} kills`).join('\n')}
-
-> 👑 *MVP:* ${ganadorGeneral[0]} con ${ganadorGeneral[1]} kills`;
+╴ᨳ Nombrᥱ ▸ › ${ganadorFinal.nombre}
+╴ᨳ Kιᥣᥣs ▸ › ${ganadorFinal.kills}`;
 
       // 7. Enviamos el mensaje
       await sock.sendMessage(msg.chat, { text: mvpMsg.trim() }, { quoted: msg });
 
-      console.log(`✅ [MVP] Resultado enviado: Ganador = ${ganadorGeneral[0]}`);
+      console.log(`✅ [MVP] Resultado enviado: Ganador = ${ganadorFinal.nombre}`);
 
     } catch (e) {
       console.error("❌ [MVP ERROR]:", e.message);
