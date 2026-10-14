@@ -66,6 +66,28 @@ export default {
       const chatData = await db.getChat(msg.chat);
       const perfilExistente = chatData[dbKey];
 
+      // ✅ VERIFICAMOS SI YA ESTÁ REGISTRADA (por ID de WhatsApp)
+      if (perfilExistente) {
+        const mentionsFinal = menciones.length > 0 ? menciones : [msg.sender];
+        
+        return sock.sendMessage(msg.chat, {
+          text: `⚠️ *${esOtro ? `@${usuarioId}` : 'Ya'} ${esOtro ? 'ya está registrada' : 'estás registrada'}.*
+
+> 👤 Nick: ${perfilExistente.nickFf}
+> 🏷️ Tag: ${perfilExistente.tag}
+> 🎮 Modo fav: ${perfilExistente.modoFav}
+> 👸 Nombre: ${perfilExistente.nombre}
+> 📅 Edad: ${perfilExistente.edad}
+> 🌎 País: ${perfilExistente.pais}
+> 🎂 Cumple: ${perfilExistente.cumple}
+
+> 💡 Usa \`.perfil${esOtro ? ` @${usuarioId}` : ''}\` para ver el perfil completo.
+> ⚠️ Si quieres actualizar tus datos, avisa a un administrador.`,
+          mentions: mentionsFinal
+        }, { quoted: msg });
+      }
+
+      // ✅ Si NO está registrada, la registramos
       const perfil = {
         id: usuarioId,
         nickFf,
@@ -75,9 +97,9 @@ export default {
         edad,
         pais,
         cumple,
-        mvpTotales: perfilExistente?.mvpTotales || 0,
-        versusJugados: perfilExistente?.versusJugados || 0,
-        fechaRegistro: perfilExistente?.fechaRegistro || new Date().toISOString()
+        mvpTotales: 0,
+        versusJugados: 0,
+        fechaRegistro: new Date().toISOString()
       };
 
       await db.updateChat(msg.chat, dbKey, perfil);
