@@ -24,9 +24,9 @@ export default {
 \`.reg nick_ff/tag/modo_fav/nombre/edad/país/cumple\`
 
 *📌 Ejemplo:*
-\`.reg PsychoKing/1234/Rank/Sofia/18/Perú/15-03\`
+\`.reg PsychoKing/23/Rank/Daniel/25/Perú/12-03\`
 
-*📝 Campos:*
+*📝 Campos (en este orden):*
 1️⃣ Nick FF
 2️⃣ Tag
 3️⃣ Modo favorito
@@ -41,11 +41,26 @@ export default {
         return msg.reply(formato);
       }
 
-      const menciones = msg.mentionedJid || msg.mentions || [];
-      
-      // ✅ CLAVE: Determinamos a QUIÉN estamos registrando
-      // Si hay mención → registramos al mencionado
-      // Si NO hay mención → registramos al que escribe
+      // Detección robusta de menciones
+      let menciones = [];
+      if (msg.mentionedJid?.length > 0) menciones = msg.mentionedJid;
+      else if (msg.mentions?.length > 0) menciones = msg.mentions;
+      else if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
+        menciones = msg.message.extendedTextMessage.contextInfo.mentionedJid;
+      }
+      else if (msg.message?.contextInfo?.mentionedJid) {
+        menciones = msg.message.contextInfo.mentionedJid;
+      }
+
+      if (menciones.length === 0) {
+        const textoOriginal = msg.text || msg.body || '';
+        const regexMencion = /@(\d{8,15})/g;
+        let match;
+        while ((match = regexMencion.exec(textoOriginal)) !== null) {
+          menciones.push(match[1] + '@s.whatsapp.net');
+        }
+      }
+
       const hayMencion = menciones.length > 0;
       const usuarioId = hayMencion
         ? menciones[0].split('@')[0]
@@ -53,37 +68,44 @@ export default {
 
       const esOtro = hayMencion && usuarioId !== msg.sender.split('@')[0];
 
-      console.log(`📝 [REG] Registrando a: ${usuarioId} (${esOtro ? 'admin registra a otra' : 'auto-registro'})`);
-
-      const partes = texto.split('/').map(p => p.trim());
-
-      if (partes.length < 7) {
-        return msg.reply('❌ *Faltan datos.* Necesitas 7 valores separados por `/`.\nUsa `.reg` para ver el formato.');
+      // ✅ Quitamos la mención del texto para que no interfiera
+      let textoLimpio = texto;
+      if (hayMencion) {
+        textoLimpio = textoLimpio.replace(/@\d{8,15}/g, '').trim();
+        textoLimpio = textoLimpio.replace(/@~\w+/g, '').trim();
+        textoLimpio = textoLimpio.replace(/^[\s\/]+/, '').trim();
       }
 
-      const nickFf = partes[0];
-      const tag = partes[1];
-      const modoFav = partes[2];
-      const nombre = partes[3];
-      const edad = partes[4];
-      const pais = partes[5];
-      const cumple = partes[6];
+      const partes = textoLimpio.split('/').map(p => p.trim());
 
-      // ✅ Usamos la clave del PERFIL DEL USUARIO OBJETIVO (no del admin)
+      // ✅ Filtramos elementos vacíos (por si hay espacios o barras extra)
+      const partesFiltradas = partes.filter(p => p !== '');
+
+      if (partesFiltradas.length < 7) {
+        return msg.reply(`❌ *Faltan datos.* Necesitas 7 valores separados por \`/\`.\n\n*Recibí:* ${partesFiltradas.length} valores\n\nUsa \`.reg\` para ver el formato.`);
+      }
+
+      const nickFf = partesFiltradas[0];
+      const tag = partesFiltradas[1];
+      const modoFav = partesFiltradas[2];
+      const nombre = partesFiltradas[3];
+      const edad = partesFiltradas[4];
+      const pais = partesFiltradas[5];
+      const cumple = partesFiltradas[6];
+
+      console.log(`📝 [REG] Datos: nick=${nickFf}, tag=${tag}, modo=${modoFav}, nombre=${nombre}, edad=${edad}, pais=${pais}, cumple=${cumple}`);
+
       const dbKey = `perfil_${usuarioId}`;
       const chatData = await db.getChat(msg.chat);
       const perfilExistente = chatData[dbKey];
 
-      console.log(`🔍 [REG] Buscando perfil existente en: ${dbKey} → ${perfilExistente ? 'ENCONTRADO' : 'NO EXISTE'}`);
-
-      // ✅ VALIDACIÓN: Si YA está registrado (solo validamos al usuario objetivo)
       if (perfilExistente) {
         const mentionsFinal = hayMencion ? menciones : [msg.sender];
-        
+
         return sock.sendMessage(msg.chat, {
           text: `⚠️ *${esOtro ? `@${usuarioId}` : 'Ya estás'} ${esOtro ? 'ya está registrada' : 'registrada'}.*
 
-> 👤 Nick: ${perfilExistente.nickFf}
+> 👤 Nick FF: ${perfilExistente.nickFf}
 > 🏷️ Tag: ${perfilExistente.tag}
 > 🎮 Modo fav: ${perfilExistente.modoFav}
 > 👸 Nombre: ${perfilExistente.nombre}
@@ -91,13 +113,11 @@ export default {
 > 🌎 País: ${perfilExistente.pais}
 > 🎂 Cumple: ${perfilExistente.cumple}
 
-> 💡 Usa \`.perfil${esOtro ? ` @${usuarioId}` : ''}\` para ver el perfil completo.
-> ⚠️ Si quieres actualizar los datos, avisa a un administrador.`,
+> 💡 Usa \`.perfil${esOtro ? ` @${usuarioId}` : ''}\` para ver el perfil completo.`,
           mentions: mentionsFinal
         }, { quoted: msg });
       }
 
-      // ✅ Si NO está registrado, lo registramos
       const perfil = {
         id: usuarioId,
         nickFf,
@@ -114,14 +134,12 @@ export default {
 
       await db.updateChat(msg.chat, dbKey, perfil);
 
-      console.log(`✅ [REG] Perfil guardado en: ${dbKey}`);
-
       const mentionsFinal = hayMencion ? menciones : [msg.sender];
 
       await sock.sendMessage(msg.chat, {
         text: `✅ *¡Registro exitoso${esOtro ? ` de @${usuarioId}` : ''}!*
 
-> 👤 Nick: ${nickFf}
+> 👤 Nick FF: ${nickFf}
 > 🏷️ Tag: ${tag}
 > 🎮 Modo fav: ${modoFav}
 > 👸 Nombre: ${nombre}
@@ -135,7 +153,6 @@ export default {
 
     } catch (e) {
       console.error("❌ [REG ERROR]:", e.message);
-      console.error("   Stack:", e.stack);
       msg.reply('❌ Ocurrió un error al procesar el registro.');
     }
   },
