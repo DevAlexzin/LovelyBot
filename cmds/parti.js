@@ -1,116 +1,146 @@
 import db from "#db"
 
-const EMOJIS_DIAS = {
-  1: '💙',
-  2: '🩷',
-  3: '💜',
-  4: '💛',
-  5: '💚',
-  6: '❤️'
-}
-
-// ✅ Función para limpiar emojis y comandos del nombre
-function limpiarNombre(texto) {
-  return texto
-    .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '') // Quita emojis
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export default {
   command: ['parti', 'participacion'],
   category: 'grupo',
+  isAdmin: true,
   botAdmin: false,
   run: async ({ msg, sock }) => {
+    console.log("========================================");
+    console.log("🔍 [DEBUG] Comando 'parti' ejecutado.");
+    console.log("========================================");
+
     try {
       if (!msg.isGroup) {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
+      // 1. Extraemos el texto
       let textoCompleto = msg.text || msg.body || '';
-      let textoUsuario = limpiarNombre(textoCompleto);
+      let textoUsuario = textoCompleto
+        .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+        .trim();
 
+      if (!textoUsuario) {
+        return msg.reply('❌ Debes mencionar a alguien y ponerle el corazón.\n\n*Ejemplo:* `.parti @usuario 💙`\n\n*Corazones por día:*\nLunes 💙 | Martes 🩷 | Miércoles 💜 | Jueves 💛 | Viernes 💚 | Sábado ❤️');
+      }
+
+      // 2. Fecha actual
       const ahora = new Date();
       const año = ahora.getFullYear();
       const inicioAño = new Date(año, 0, 1);
       const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
       const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
-      
-      const diaSemana = ahora.getDay();
-      const emojiDia = EMOJIS_DIAS[diaSemana];
 
-      if (!emojiDia) {
-        return msg.reply('⚠️ Hoy es Domingo, no hay participación. Vuelve el Lunes 💙');
-      }
-
+      // 3. Leemos el chat
       const chatData = await db.getChat(msg.chat);
       const dbKey = `participacion_semana_${año}_${semana}`;
       let registros = chatData[dbKey] || [];
 
-      const usuarioId = msg.sender.split('@')[0];
+      // 4. Detectamos el corazón
+      const corazonesValidos = ['💙', '🩷', '💜', '💛', '💚', '❤️', '🍯'];
+      const corazonEncontrado = corazonesValidos.find(c => textoUsuario.includes(c));
 
-      // ✅ Buscamos primero por ID de usuario
-      let usuarioRegistrado = registros.find(r => r.id === usuarioId);
+      if (!corazonEncontrado) {
+        return msg.reply('❌ Debes especificar un corazón válido.\n\n*Corazones válidos:* 💙 🩷 💜 💛 💚 ❤️ 🍯');
+      }
 
-      // ✅ Si no lo encuentra por ID, buscamos por nombre
-      if (!usuarioRegistrado && textoUsuario) {
-        usuarioRegistrado = registros.find(
-          r => r.nombre.toLowerCase().trim() === textoUsuario.toLowerCase().trim()
+      // 5. Detectamos a quién está mencionando (o el nombre)
+      let usuarioObjetivoId = null;
+      let nombreObjetivo = null;
+
+      const menciones = msg.mentionedJid || msg.mentions || [];
+
+      if (menciones.length > 0) {
+        // Si mencionó a alguien
+        usuarioObjetivoId = menciones[0].split('@')[0];
+
+        try {
+          const groupMetadata = await sock.groupMetadata(msg.chat);
+          const participante = groupMetadata.participants.find(
+            p => (p.jid || p.id || p.lid)?.split('@')[0] === usuarioObjetivoId
+          );
+          nombreObjetivo = participante?.notify || participante?.name || usuarioObjetivoId;
+        } catch {
+          nombreObjetivo = usuarioObjetivoId;
+        }
+      } else {
+        // Si no mencionó, buscamos por nombre en el texto
+        nombreObjetivo = textoUsuario
+          .replace(corazonEncontrado, '')
+          .trim();
+
+        if (!nombreObjetivo) {
+          return msg.reply('❌ Debes mencionar a alguien o escribir su nombre.\n\n*Ejemplo:* `.parti @usuario 💙`');
+        }
+
+        // Buscamos si ese nombre ya existe
+        const registroExistente = registros.find(
+          r => r.nombre.toLowerCase() === nombreObjetivo.toLowerCase()
         );
-        // Si lo encuentra por nombre, le actualizamos el ID
-        if (usuarioRegistrado) {
-          usuarioRegistrado.id = usuarioId;
+
+        if (registroExistente) {
+          usuarioObjetivoId = registroExistente.id;
+        } else {
+          usuarioObjetivoId = nombreObjetivo.toLowerCase();
         }
       }
 
-      // Si no existe, lo registramos
-      if (!usuarioRegistrado) {
-        if (!textoUsuario) {
-          return msg.reply('❌ Debes registrarte primero. Ejemplo: `.parti Tokyo`');
-        }
+      if (!usuarioObjetivoId) {
+        return msg.reply('❌ No se pudo identificar a la persona.');
+      }
 
-        usuarioRegistrado = {
-          id: usuarioId,
-          nombre: textoUsuario,
+      // 6. Buscamos si ya está registrada
+      let personaRegistrada = registros.find(r => r.id === usuarioObjetivoId);
+
+      if (!personaRegistrada) {
+        personaRegistrada = {
+          id: usuarioObjetivoId,
+          nombre: nombreObjetivo,
           corazones: [],
           fechaRegistro: ahora.toISOString()
         };
-        registros.push(usuarioRegistrado);
+        registros.push(personaRegistrada);
       }
 
-      // ✅ Agregamos el corazón (sin límite)
-      usuarioRegistrado.corazones.push(emojiDia);
+      // 7. Agregamos el corazón
+      personaRegistrada.corazones.push(corazonEncontrado);
 
+      // 8. Guardamos la participación
       await db.updateChat(msg.chat, dbKey, registros);
 
-      // ✅ Sumamos al perfil si existe
-      const perfilKey = `perfil_${usuarioId}`;
+      // ✅ 9. CONEXIÓN CON EL PERFIL
+      // Si el usuario objetivo tiene perfil, sumamos +1 versus jugado
+      const perfilKey = `perfil_${usuarioObjetivoId}`;
       const chatDataActualizado = await db.getChat(msg.chat);
+
       if (chatDataActualizado[perfilKey]) {
         chatDataActualizado[perfilKey].versusJugados = (chatDataActualizado[perfilKey].versusJugados || 0) + 1;
         await db.updateChat(msg.chat, perfilKey, chatDataActualizado[perfilKey]);
-        console.log(`📊 [PARTI] ${chatDataActualizado[perfilKey].nombre} ahora tiene ${chatDataActualizado[perfilKey].versusJugados} versus jugados`);
+        console.log(`📊 [PARTI → PERFIL] ${chatDataActualizado[perfilKey].nombre} ahora tiene ${chatDataActualizado[perfilKey].versusJugados} versus jugados`);
+      } else {
+        console.log(`⚠️ [PARTI] No se encontró perfil para @${usuarioObjetivoId}`);
       }
 
-      // Construimos la lista
+      // 10. Construimos la lista
       let listaParticipantes = '';
       for (const reg of registros) {
-        const nombreLimpio = limpiarNombre(reg.nombre);
-        
-        const corazones = reg.corazones.length > 0 
-          ? reg.corazones.join(' ') 
-          : '';
-        
-        listaParticipantes += `┈ꕤ // ${nombreLimpio} ║${corazones ? ' ' + corazones : ''}\n`;
+        const nombreLimpio = reg.nombre
+          .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
+          .trim();
+
+        const corazones = reg.corazones.length > 0
+          ? reg.corazones.join(' ')
+          : '⏳';
+
+        listaParticipantes += `┈ꕤ // ${nombreLimpio} ║ ${corazones}\n`;
       }
 
-      const participacionMsg = `‧₊ ᵎᵎ 𖤓 𝗣𝗮𝗿𝘁𝗶𝗰𝗶𝗽𝗮𝗰𝗶𝗼𝗻 𝘀𝗲𝗺𝗮𝗻𝗮𝗹
+      const participacionMsg = `‧₊ ᵎᵎ 𖤓🏹 𝗣𝗮𝗿𝘁𝗶𝗰𝗶𝗽𝗮𝗰𝗶𝗼𝗻 𝘀𝗲𝗺𝗮𝗻𝗮𝗹
 ꕤ ╴╴╴╴ꕤ ╴╴╴╴ꕤ ╴╴╴╴╴ꕤ
 
-─⋆ Mvρ 🍯
-─⋆ Pᥲrtιᥴιρᥲᥴιoᥒ
-ㅤ.₊‧ʚɞ‧₊SᥱmᲐᥒᥲ
+᭝ ᨳଓ ՟  Mvρ 🍒
+᭝ ᨳଓ ՟  Pᥲrtιᥴιρᥲᥴιoᥒ
 𝗟💙/𝗠🩷/𝗠💜/𝗝💛/𝗩💚/𝗦❤️
 
 ⌢.⌢.⌢.꒰⌢୨୧⌢꒱.⌢.⌢.⌢
@@ -119,10 +149,17 @@ export default {
 ${listaParticipantes}
 *Total de participantes:* ${registros.length}`;
 
-      await sock.sendMessage(msg.chat, { text: participacionMsg.trim() }, { quoted: msg });
+      // 11. Enviamos
+      await sock.sendMessage(msg.chat, {
+        text: participacionMsg.trim(),
+        mentions: usuarioObjetivoId.includes('@') ? [usuarioObjetivoId] : []
+      }, { quoted: msg });
 
     } catch (e) {
-      console.error("❌ [PARTI ERROR]:", e.message);
+      console.error("❌ [ERROR CRÍTICO] Fallo en el comando parti:");
+      console.error("   - Mensaje de error:", e.message);
+      console.error("   - Stack trace:", e.stack);
+
       msg.reply('❌ Ocurrió un error al procesar la participación.');
     }
   },
