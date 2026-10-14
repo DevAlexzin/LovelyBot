@@ -32,7 +32,6 @@ export default {
         return msg.reply(instrucciones);
       }
 
-      // Extraemos los kills del texto (patrones tipo "/15")
       const numerosEncontrados = textoUsuario.match(/\/\s*(\d+)/g) || [];
       const killsArray = numerosEncontrados.map(n => parseInt(n.replace(/\/\s*/, '')) || 0);
 
@@ -63,7 +62,6 @@ export default {
         ganadorKills = kills2;
       }
 
-      // Sumamos MVP al perfil de la ganadora
       const dbKey = `perfil_${ganadorId}`;
       const perfilGanador = chatData[dbKey];
 
@@ -73,8 +71,6 @@ export default {
         perfilGanador.mvpTotales = mvpNuevo;
         await db.updateChat(msg.chat, dbKey, perfilGanador);
         console.log(`📊 [MVP] ${ganadorNombre} ahora tiene ${mvpNuevo} MVPs`);
-      } else {
-        console.log(`⚠️ [MVP] No se encontró perfil para @${ganadorId}`);
       }
 
       const mvpMsg = `⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
@@ -87,9 +83,9 @@ export default {
 ╴ᨳ Nombrᥱ ▸ › ${nombre2}
 ╴ᨳ Kιᥣᥣs ▸ › ${kills2}
 
-⭒˚ ᵎᎥ✮🎠 𝓟𝓼𝔂𝓬𝓱𝓸𝓼𝓲𝓽𝓪 𝓯𝓲𝓷𝓪𝓵
+⭒˚ ᵎᵎ✮🎠 𝓟𝓼𝔂𝓬𝓱𝓸𝓼𝓲𝓽𝓪 𝓯𝓲𝓷𝓪𝓵
 ╴ᨳ Nombrᥱ ▸ › ${ganadorNombre}
-╴ᨳ Kιᥣᥣs ▸ › ${ganadorKills}${mvpNuevo !== null ? `\n\n> 🌻 *MVP totales de ${ganadorNombre}:* ${mvpNuevo}` : `\n\n> ⚠️ No se encontró el perfil de ${ganadorNombre}.\n> Usa \`.reg @${ganadorId} nick/tag/modo/nombre/edad/país/cumple\``}`;
+╴ᨳ Kιᥣᥣs ▸ › ${ganadorKills}${mvpNuevo !== null ? `\n\n> 🌻 *MVP totales de ${ganadorNombre}:* ${mvpNuevo}` : ''}`;
 
       await sock.sendMessage(msg.chat, {
         text: mvpMsg.trim(),
