@@ -6,44 +6,57 @@ export default {
   isAdmin: true,
   botAdmin: false,
   run: async ({ msg, sock }) => {
+    console.log("========================================");
+    console.log("🔍 [DEBUG] Comando 'parti' ejecutado.");
+    console.log("========================================");
+
     try {
       if (!msg.isGroup) {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
 
+      // 1. Extraemos el texto
       let textoCompleto = msg.text || msg.body || '';
       let textoUsuario = textoCompleto
         .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
         .trim();
 
-      if (!textoUsuario) {
-        return msg.reply('❌ Debes mencionar a alguien y ponerle el corazón.\n\n*Ejemplo:* `.parti @usuario 💙`\n\n*Corazones por día:*\nLunes 💙 | Martes 🩷 | Miércoles 💜 | Jueves 💛 | Viernes 💚 | Sábado ❤️');
-      }
-
-      const ahora = new Date();
-      const año = ahora.getFullYear();
-      const inicioAño = new Date(año, 0, 1);
-      const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
-      const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
-
-      const chatData = await db.getChat(msg.chat);
-      const dbKey = `participacion_semana_${año}_${semana}`;
-      let registros = chatData[dbKey] || [];
-
+      // 2. Detectamos el corazón
       const corazonesValidos = ['💙', '🩷', '💜', '💛', '💚', '❤️', '🍯'];
       const corazonEncontrado = corazonesValidos.find(c => textoUsuario.includes(c));
 
       if (!corazonEncontrado) {
-        return msg.reply('❌ Debes especificar un corazón válido.\n\n*Corazones válidos:* 💙 🩷 💜 💛 💚 ❤️ 🍯');
+        return msg.reply(`❌ Debes especificar un corazón válido.\n\n*Corazones válidos:* 💙 🩷 💜 💛 💚 ❤️ 🍯\n\n*Ejemplo:* \`.parti @usuario 💙\``);
       }
 
+      // 3. Detección robusta de menciones
+      let menciones = [];
+      if (msg.mentionedJid?.length > 0) menciones = msg.mentionedJid;
+      else if (msg.mentions?.length > 0) menciones = msg.mentions;
+      else if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
+        menciones = msg.message.extendedTextMessage.contextInfo.mentionedJid;
+      }
+      else if (msg.message?.contextInfo?.mentionedJid) {
+        menciones = msg.message.contextInfo.mentionedJid;
+      }
+
+      if (menciones.length === 0) {
+        const textoOriginal = msg.text || msg.body || '';
+        const regexMencion = /@(\d{8,15})/g;
+        let match;
+        while ((match = regexMencion.exec(textoOriginal)) !== null) {
+          menciones.push(match[1] + '@s.whatsapp.net');
+        }
+      }
+
+      // ✅ ÚNICA LÓGICA: Si hay mención, usamos al mencionado. Si no, usamos al que escribe.
       let usuarioObjetivoId = null;
       let nombreObjetivo = null;
 
-      const menciones = msg.mentionedJid || msg.mentions || [];
-
       if (menciones.length > 0) {
+        // ✅ Caso 1: Hay mención → anotamos al mencionado
         usuarioObjetivoId = menciones[0].split('@')[0];
+        
         try {
           const groupMetadata = await sock.groupMetadata(msg.chat);
           const participante = groupMetadata.participants.find(
@@ -54,27 +67,26 @@ export default {
           nombreObjetivo = usuarioObjetivoId;
         }
       } else {
-        nombreObjetivo = textoUsuario.replace(corazonEncontrado, '').trim();
-        if (!nombreObjetivo) {
-          return msg.reply('❌ Debes mencionar a alguien o escribir su nombre.');
-        }
-        usuarioObjetivoId = nombreObjetivo.toLowerCase();
+        // ✅ Caso 2: Sin mención → anotamos al que escribe (auto-registro)
+        usuarioObjetivoId = msg.sender.split('@')[0];
+        nombreObjetivo = msg.pushName || usuarioObjetivoId;
       }
 
-      if (!usuarioObjetivoId) {
-        return msg.reply('❌ No se pudo identificar a la persona.');
-      }
+      console.log(`📝 [PARTI] Anotando: ${nombreObjetivo} (ID: ${usuarioObjetivoId})`);
 
+      // 4. Fecha actual
+      const ahora = new Date();
+      const año = ahora.getFullYear();
+      const inicioAño = new Date(año, 0, 1);
+      const diasTranscurridos = Math.floor((ahora - inicioAño) / 86400000);
+      const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
+
+      const chatData = await db.getChat(msg.chat);
+      const dbKey = `participacion_semana_${año}_${semana}`;
+      let registros = chatData[dbKey] || [];
+
+      // 5. Buscamos SOLO por ID (nunca por nombre)
       let personaRegistrada = registros.find(r => r.id === usuarioObjetivoId);
-
-      if (!personaRegistrada && nombreObjetivo) {
-        personaRegistrada = registros.find(
-          r => r.nombre.toLowerCase().trim() === nombreObjetivo.toLowerCase().trim()
-        );
-        if (personaRegistrada) {
-          personaRegistrada.id = usuarioObjetivoId;
-        }
-      }
 
       if (!personaRegistrada) {
         personaRegistrada = {
@@ -84,43 +96,36 @@ export default {
           fechaRegistro: ahora.toISOString()
         };
         registros.push(personaRegistrada);
+        console.log(`✅ [PARTI] Nueva participante registrada: ${nombreObjetivo}`);
       }
 
+      // 6. Agregamos el corazón
       personaRegistrada.corazones.push(corazonEncontrado);
 
+      // 7. Guardamos
       await db.updateChat(msg.chat, dbKey, registros);
 
-      // ✅ CONEXIÓN CON EL PERFIL
-      let perfilKeyReal = null;
-      const nombreBuscado = (nombreObjetivo || '').toLowerCase().trim();
+      // ✅ 8. CONEXIÓN CON EL PERFIL (busca por ID directamente)
+      const perfilKey = `perfil_${usuarioObjetivoId}`;
+      const chatDataActualizado = await db.getChat(msg.chat);
 
-      for (const [key, value] of Object.entries(chatData)) {
-        if (key.startsWith('perfil_') && value && typeof value === 'object') {
-          const nombreP = (value.nombre || '').toLowerCase().trim();
-          const nickP = (value.nickFf || '').toLowerCase().trim();
-          if (nombreP === nombreBuscado || nickP === nombreBuscado) {
-            perfilKeyReal = key;
-            usuarioObjetivoId = value.id;
-            break;
-          }
-        }
+      if (chatDataActualizado[perfilKey]) {
+        chatDataActualizado[perfilKey].versusJugados = (chatDataActualizado[perfilKey].versusJugados || 0) + 1;
+        await db.updateChat(msg.chat, perfilKey, chatDataActualizado[perfilKey]);
+        console.log(`📊 [PARTI → PERFIL] ${chatDataActualizado[perfilKey].nombre} ahora tiene ${chatDataActualizado[perfilKey].versusJugados} versus jugados`);
+      } else {
+        console.log(`⚠️ [PARTI] No hay perfil para ${nombreObjetivo} (${perfilKey})`);
       }
 
-      if (perfilKeyReal) {
-        const chatDataActualizado = await db.getChat(msg.chat);
-        const perfil = chatDataActualizado[perfilKeyReal];
-        if (perfil) {
-          perfil.versusJugados = (perfil.versusJugados || 0) + 1;
-          await db.updateChat(msg.chat, perfilKeyReal, perfil);
-          console.log(`📊 [PARTI → PERFIL] ${perfil.nombre} ahora tiene ${perfil.versusJugados} versus jugados`);
-        }
-      }
-
+      // 9. Construimos la lista (LIMPIANDO nombres)
       let listaParticipantes = '';
       for (const reg of registros) {
-        const nombreLimpio = reg.nombre
+        // ✅ Limpiamos el nombre de comandos y emojis
+        const nombreLimpio = (reg.nombre || '')
           .replace(/^[.\/!#]?(parti|participacion)\s*/i, '')
-          .trim();
+          .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+          .replace(/\s+/g, ' ')
+          .trim() || 'Sin nombre';
 
         const corazones = reg.corazones.length > 0
           ? reg.corazones.join(' ')
@@ -144,11 +149,11 @@ ${listaParticipantes}
 
       await sock.sendMessage(msg.chat, {
         text: participacionMsg.trim(),
-        mentions: usuarioObjetivoId.includes('@') ? [usuarioObjetivoId] : []
+        mentions: menciones.length > 0 ? menciones : []
       }, { quoted: msg });
 
     } catch (e) {
-      console.error("❌ [ERROR CRÍTICO] Fallo en el comando parti:", e.message);
+      console.error("❌ [PARTI ERROR]:", e.message);
       msg.reply('❌ Ocurrió un error al procesar la participación.');
     }
   },
