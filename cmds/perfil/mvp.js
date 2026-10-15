@@ -15,62 +15,48 @@ export default {
         .replace(/^[.\/!#]?(mvp|mvppsycho)\s*/i, '')
         .trim();
 
-      const menciones = msg.mentionedJid || msg.mentions || [];
-
-      if (!textoUsuario || menciones.length < 2) {
-        const instrucciones = `⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
+      if (!textoUsuario) {
+        return msg.reply(`⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
 
 *📋 Formato:*
-\`.mvp @jugadora1/kills1 @jugadora2/kills2\`
+\`.mvp nombre1/kills1/nombre2/kills2\`
 
 *📌 Ejemplo:*
-\`.mvp @Sofia/15 @Rocio/12\`
+\`.mvp Sofia/15/Rocio/12\`
 
-> 💡 El ganador se elige automáticamente (el que tenga más kills).
-> ✅ Se le sumará 1 MVP a su perfil.`;
-
-        return msg.reply(instrucciones);
+> 💡 El ganador (más kills) suma +1 MVP.`);
       }
 
-      const numerosEncontrados = textoUsuario.match(/\/\s*(\d+)/g) || [];
-      const killsArray = numerosEncontrados.map(n => parseInt(n.replace(/\/\s*/, '')) || 0);
+      const partes = textoUsuario.split('/').map(p => p.trim()).filter(p => p !== '');
 
-      if (menciones.length < 2 || killsArray.length < 2) {
-        return msg.reply('❌ *Faltan datos.*\n\n*Formato:* `.mvp @jugadora1/kills1 @jugadora2/kills2`\n\n*Ejemplo:* `.mvp @Sofia/15 @Rocio/12`');
+      if (partes.length < 4) {
+        return msg.reply('❌ Faltan datos.\n\n*Formato:* `.mvp nombre1/kills1/nombre2/kills2`\n\n*Ejemplo:* `.mvp Sofia/15/Rocio/12`');
       }
 
-      const jugadora1Id = menciones[0].split('@')[0];
-      const jugadora2Id = menciones[1].split('@')[0];
-      const kills1 = killsArray[0];
-      const kills2 = killsArray[1];
+      const nombre1 = partes[0];
+      const kills1 = parseInt(partes[1]) || 0;
+      const nombre2 = partes[2];
+      const kills2 = parseInt(partes[3]) || 0;
 
+      // Determinamos ganador
+      const ganadorNombre = kills1 >= kills2 ? nombre1 : nombre2;
+      const ganadorKills = Math.max(kills1, kills2);
+      const ganadorKey = ganadorNombre.toLowerCase().trim();
+
+      console.log(`🏆 [MVP] Ganador: ${ganadorNombre} con ${ganadorKills} kills`);
+
+      // ✅ Sumamos MVP al perfil por NOMBRE
       const chatData = await db.getChat(msg.chat);
-      const perfil1 = chatData[`perfil_${jugadora1Id}`];
-      const perfil2 = chatData[`perfil_${jugadora2Id}`];
-
-      const nombre1 = perfil1?.nombre || `@${jugadora1Id}`;
-      const nombre2 = perfil2?.nombre || `@${jugadora2Id}`;
-
-      let ganadorId, ganadorNombre, ganadorKills;
-      if (kills1 >= kills2) {
-        ganadorId = jugadora1Id;
-        ganadorNombre = nombre1;
-        ganadorKills = kills1;
-      } else {
-        ganadorId = jugadora2Id;
-        ganadorNombre = nombre2;
-        ganadorKills = kills2;
-      }
-
-      const dbKey = `perfil_${ganadorId}`;
-      const perfilGanador = chatData[dbKey];
+      const perfilKey = `perfil_${ganadorKey}`;
 
       let mvpNuevo = null;
-      if (perfilGanador) {
-        mvpNuevo = (perfilGanador.mvpTotales || 0) + 1;
-        perfilGanador.mvpTotales = mvpNuevo;
-        await db.updateChat(msg.chat, dbKey, perfilGanador);
-        console.log(`📊 [MVP] ${ganadorNombre} ahora tiene ${mvpNuevo} MVPs`);
+      if (chatData[perfilKey]) {
+        mvpNuevo = (chatData[perfilKey].mvpTotales || 0) + 1;
+        chatData[perfilKey].mvpTotales = mvpNuevo;
+        await db.updateChat(msg.chat, perfilKey, chatData[perfilKey]);
+        console.log(`📊 [MVP → PERFIL] ${ganadorNombre} ahora tiene ${mvpNuevo} MVPs`);
+      } else {
+        console.log(`⚠️ [MVP] No hay perfil para "${ganadorNombre}"`);
       }
 
       const mvpMsg = `⋆ 𖤓🏹 𝗠𝘃𝗽 𝗣𝘀𝘆𝗰𝗵𝗼 𝗟𝗮𝗻𝗱
@@ -87,10 +73,7 @@ export default {
 ╴ᨳ Nombrᥱ ▸ › ${ganadorNombre}
 ╴ᨳ Kιᥣᥣs ▸ › ${ganadorKills}${mvpNuevo !== null ? `\n\n> 🌻 *MVP totales de ${ganadorNombre}:* ${mvpNuevo}` : ''}`;
 
-      await sock.sendMessage(msg.chat, {
-        text: mvpMsg.trim(),
-        mentions: menciones
-      }, { quoted: msg });
+      await sock.sendMessage(msg.chat, { text: mvpMsg.trim() }, { quoted: msg });
 
     } catch (e) {
       console.error("❌ [MVP ERROR]:", e.message);
