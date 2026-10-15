@@ -1,7 +1,7 @@
 import db from "#db"
 
 export default {
-  command: ['perfil', 'profile', 'jugadora'],
+  command: ['registrar', 'reg', 'registro'],
   category: 'perfil',
   botAdmin: false,
   run: async ({ msg, sock }) => {
@@ -12,130 +12,99 @@ export default {
 
       let textoCompleto = msg.text || msg.body || '';
       const texto = textoCompleto
-        .replace(/^[.\/!#]?(perfil|profile|jugadora)\s*/i, '')
+        .replace(/^[.\/!#]?(registrar|reg|registro)\s*/i, '')
         .trim();
 
-      // Detección robusta de menciones
-      let menciones = [];
-      if (msg.mentionedJid?.length > 0) menciones = msg.mentionedJid;
-      else if (msg.mentions?.length > 0) menciones = msg.mentions;
-      else if (msg.message?.extendedTextMessage?.contextInfo?.mentionedJid) {
-        menciones = msg.message.extendedTextMessage.contextInfo.mentionedJid;
-      }
-      else if (msg.message?.contextInfo?.mentionedJid) {
-        menciones = msg.message.contextInfo.mentionedJid;
+      if (!texto) {
+        return msg.reply(`┈─˖Ი𐑼⋆ 𝗥𝗲𝗴𝗶𝘀𝘁𝗿𝗼 𝗱𝗲 𝗷𝘂𝗴𝗮𝗱𝗼𝗿𝗮
+
+*📋 Formato:*
+\`.reg nick_ff/tag/modo/nombre/edad/país/cumple\`
+
+*📌 Ejemplo:*
+\`.reg PsychoKing/23/Rank/Sofia/18/Perú/12-03\`
+
+*📝 Campos (en orden):*
+1️⃣ Nick FF
+2️⃣ Tag
+3️⃣ Modo favorito
+4️⃣ Nombre ⭐ (se usa para identificarla)
+5️⃣ Edad
+6️⃣ País
+7️⃣ Cumple`);
       }
 
-      if (menciones.length === 0) {
-        const textoOriginal = msg.text || msg.body || '';
-        const regexMencion = /@(\d{8,15})/g;
-        let match;
-        while ((match = regexMencion.exec(textoOriginal)) !== null) {
-          menciones.push(match[1] + '@s.whatsapp.net');
-        }
+      // Quitamos menciones del texto si las hay
+      let textoLimpio = texto.replace(/@\d{8,15}/g, '').replace(/@~\w+/g, '').trim();
+      textoLimpio = textoLimpio.replace(/^[\/\s]+/, '').trim();
+
+      const partes = textoLimpio.split('/').map(p => p.trim()).filter(p => p !== '');
+
+      if (partes.length < 7) {
+        return msg.reply(`❌ *Faltan datos.* Necesitas 7 valores.\n\n*Recibí:* ${partes.length}\n\nUsa \`.reg\` para ver el formato.`);
       }
+
+      const nickFf = partes[0];
+      const tag = partes[1];
+      const modoFav = partes[2];
+      const nombre = partes[3];
+      const edad = partes[4];
+      const pais = partes[5];
+      const cumple = partes[6];
+
+      // ✅ El NOMBRE es el identificador único
+      const nombreKey = nombre.toLowerCase().trim();
+      const dbKey = `perfil_${nombreKey}`;
 
       const chatData = await db.getChat(msg.chat);
+      const perfilExistente = chatData[dbKey];
 
-      let perfil = null;
-      let usuarioId = null;
+      if (perfilExistente) {
+        return msg.reply(`⚠️ *Ya existe un perfil con el nombre "${nombre}".*
 
-      // ✅ CASO 1: Mención (prioridad máxima)
-      if (menciones.length > 0) {
-        usuarioId = menciones[0].split('@')[0];
-        perfil = chatData[`perfil_${usuarioId}`];
-        console.log(`🔍 [PERFIL] Buscando por mención: ${usuarioId}`);
-      }
-      // ✅ CASO 2: Nombre en texto
-      else if (texto) {
-        const nombreBuscado = texto.toLowerCase().trim();
-        console.log(`🔍 [PERFIL] Buscando por nombre: "${nombreBuscado}"`);
+> 👤 Nick: ${perfilExistente.nickFf}
+> 🏷️ Tag: ${perfilExistente.tag}
+> 🎮 Modo: ${perfilExistente.modoFav}
+> 👸 Nombre: ${perfilExistente.nombre}
+> 📅 Edad: ${perfilExistente.edad}
+> 🌎 País: ${perfilExistente.pais}
+> 🎂 Cumple: ${perfilExistente.cumple}
 
-        // Si es el mismo nombre del que escribe, usamos su ID directo
-        const senderId = msg.sender.split('@')[0];
-        const perfilSender = chatData[`perfil_${senderId}`];
-        
-        if (perfilSender && 
-            ((perfilSender.nombre || '').toLowerCase().trim() === nombreBuscado ||
-             (perfilSender.nickFf || '').toLowerCase().trim() === nombreBuscado)) {
-          perfil = perfilSender;
-          usuarioId = senderId;
-          console.log(`✅ [PERFIL] Es el propio usuario: ${usuarioId}`);
-        } else {
-          // Buscamos en todos los perfiles
-          for (const [key, value] of Object.entries(chatData)) {
-            if (key.startsWith('perfil_') && value && typeof value === 'object') {
-              const nombreP = (value.nombre || '').toLowerCase().trim();
-              const nickP = (value.nickFf || '').toLowerCase().trim();
-
-              if (nombreP === nombreBuscado || nickP === nombreBuscado) {
-                perfil = value;
-                usuarioId = value.id;
-                console.log(`✅ [PERFIL] Perfil encontrado: ${key}`);
-                break;
-              }
-            }
-          }
-        }
-      }
-      // ✅ CASO 3: Sin nada → usar el propio usuario
-      else {
-        usuarioId = msg.sender.split('@')[0];
-        perfil = chatData[`perfil_${usuarioId}`];
-        console.log(`🔍 [PERFIL] Usando perfil propio: ${usuarioId}`);
+> 💡 Usa \`.perfil ${nombre}\` para verlo.`);
       }
 
-      if (!perfil) {
-        if (menciones.length > 0) {
-          return msg.reply(`❌ @${usuarioId} no está registrada.`);
-        }
-        if (texto) {
-          return msg.reply(`❌ No se encontró un perfil con el nombre *${texto}*.`);
-        }
-        return msg.reply(`❌ No estás registrada.`);
-      }
+      const perfil = {
+        nickFf,
+        tag,
+        modoFav,
+        nombre,
+        edad,
+        pais,
+        cumple,
+        mvpTotales: 0,
+        versusJugados: 0,
+        fechaRegistro: new Date().toISOString()
+      };
 
-      const mvpTotales = perfil.mvpTotales || 0;
-      const versusJugados = perfil.versusJugados || 0;
+      await db.updateChat(msg.chat, dbKey, perfil);
 
-      const mencionUsuario = `@${usuarioId}`;
+      console.log(`✅ [REG] Perfil guardado: ${nombre} → ${dbKey}`);
 
-      const perfilMsg = `┈─˖Ი𐑼⋆ 𝗣𝗲𝗿𝗳𝗶𝗹 𝗷𝘂𝗴𝗮𝗱𝗼𝗿𝗮  
+      await msg.reply(`✅ *¡Registro exitoso!*
 
-ꕤ ╴╴╴╴ꕤ ╴╴╴╴ꕤ ╴╴╴╴ꕤ
+> 👤 Nick FF: ${nickFf}
+> 🏷️ Tag: ${tag}
+> 🎮 Modo fav: ${modoFav}
+> 👸 Nombre: ${nombre}
+> 📅 Edad: ${edad}
+> 🌎 País: ${pais}
+> 🎂 Cumple: ${cumple}
 
- ᰭ ꔛㅤׅ 𝐓𝐞𝐚𝐦 𝐏𝐬𝐲𝐜𝐡𝐨 𝐋𝐚𝐧𝐝
-
-˖.𖥔 ݁ ˖. 𝗣𝗲𝗿𝘀𝗼𝗻𝗮𝗹 ! ⊹ ࣪ ˖ ᨐฅ 
-᭝ 🏹 ՟ 𝓝𝓸𝓶𝓫𝓻𝓮 ⸝⸝ ${mencionUsuario}
-᭝ 🎠 ՟ 𝓔𝓭𝓪𝓭 ⸝⸝ ${perfil.edad}
-᭝ 🏹 ՟ 𝓟𝓪𝜾́𝓼 ⸝⸝ ${perfil.pais}
-᭝ 🎠 ՟ 𝓕𝓮𝓬𝓱𝓪 𝓭𝓮 𝓬𝓾𝓶𝓹𝓵𝓮 ⸝⸝ ${perfil.cumple}
-
-˖.𖥔 ݁ ˖. 𝗖𝗼𝗺𝗽𝗲𝘁𝗶𝘁𝗶𝘃𝗼 ! ⊹ ࣪ ˖ ᨐฅ  
-᭝ 🌈 ՟ 𝓝𝓲𝓬𝓴 𝓯𝓯 ⸝⸝ ${perfil.nickFf}
-᭝ 🌼 ՟ 𝓣𝓪𝓰 ⸝⸝ ${perfil.tag}
-᭝ 🌈 ՟ 𝓜𝓸𝓭𝓸 𝓯𝓪𝓿 ⸝⸝ ${perfil.modoFav}
-
-˖.𖥔 ݁ ˖. 𝗩𝗲𝗿𝘀𝘂𝘀 ! ⊹ ࣪ ˖ ᨐฅ 
-᭝ 🌻 ՟ 𝓜𝓿𝓹 𝓽𝓸𝓽𝓪𝓵𝓮𝓼 ⸝⸝ ${mvpTotales}
-᭝ 🍒 ՟ 𝓥𝓮𝓻𝓼𝓾𝓼 𝓳𝓾𝓰𝓪𝓭𝓸𝓼 ⸝⸝ ${versusJugados}
-
-𝓕𝓻𝓪𝓼𝓮 𝓶𝓸𝓽𝓲𝓿𝓪𝓬𝓲𝓸𝓷𝓪𝓵 
-
-꒰ঌ ◜⁺⋆⋎⋆⁺◝ ໒꒱ 
-.     ⋱˛  ˛⋰`;
-
-      const mentionsFinal = [usuarioId + '@s.whatsapp.net'];
-
-      await sock.sendMessage(msg.chat, {
-        text: perfilMsg.trim(),
-        mentions: mentionsFinal
-      }, { quoted: msg });
+> 💡 Usa \`.perfil ${nombre}\` para ver el perfil completo.`);
 
     } catch (e) {
-      console.error("❌ [PERFIL ERROR]:", e.message);
-      msg.reply('❌ Ocurrió un error al procesar el perfil.');
+      console.error("❌ [REG ERROR]:", e.message);
+      msg.reply('❌ Ocurrió un error al procesar el registro.');
     }
   },
 };
