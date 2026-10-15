@@ -40,32 +40,45 @@ export default {
       let perfil = null;
       let usuarioId = null;
 
-      // CASO 1: Si mencionó a alguien
+      // ✅ CASO 1: Mención (prioridad máxima)
       if (menciones.length > 0) {
         usuarioId = menciones[0].split('@')[0];
         perfil = chatData[`perfil_${usuarioId}`];
         console.log(`🔍 [PERFIL] Buscando por mención: ${usuarioId}`);
       }
-      // CASO 2: Si escribió un nombre
+      // ✅ CASO 2: Nombre en texto
       else if (texto) {
         const nombreBuscado = texto.toLowerCase().trim();
         console.log(`🔍 [PERFIL] Buscando por nombre: "${nombreBuscado}"`);
 
-        for (const [key, value] of Object.entries(chatData)) {
-          if (key.startsWith('perfil_') && value && typeof value === 'object') {
-            const nombreP = (value.nombre || '').toLowerCase().trim();
-            const nickP = (value.nickFf || '').toLowerCase().trim();
+        // Si es el mismo nombre del que escribe, usamos su ID directo
+        const senderId = msg.sender.split('@')[0];
+        const perfilSender = chatData[`perfil_${senderId}`];
+        
+        if (perfilSender && 
+            ((perfilSender.nombre || '').toLowerCase().trim() === nombreBuscado ||
+             (perfilSender.nickFf || '').toLowerCase().trim() === nombreBuscado)) {
+          perfil = perfilSender;
+          usuarioId = senderId;
+          console.log(`✅ [PERFIL] Es el propio usuario: ${usuarioId}`);
+        } else {
+          // Buscamos en todos los perfiles
+          for (const [key, value] of Object.entries(chatData)) {
+            if (key.startsWith('perfil_') && value && typeof value === 'object') {
+              const nombreP = (value.nombre || '').toLowerCase().trim();
+              const nickP = (value.nickFf || '').toLowerCase().trim();
 
-            if (nombreP === nombreBuscado || nickP === nombreBuscado) {
-              perfil = value;
-              usuarioId = value.id;
-              console.log(`✅ [PERFIL] Perfil encontrado: ${key}`);
-              break;
+              if (nombreP === nombreBuscado || nickP === nombreBuscado) {
+                perfil = value;
+                usuarioId = value.id;
+                console.log(`✅ [PERFIL] Perfil encontrado: ${key}`);
+                break;
+              }
             }
           }
         }
       }
-      // CASO 3: Sin mención ni nombre → usar el propio usuario
+      // ✅ CASO 3: Sin nada → usar el propio usuario
       else {
         usuarioId = msg.sender.split('@')[0];
         perfil = chatData[`perfil_${usuarioId}`];
@@ -85,7 +98,6 @@ export default {
       const mvpTotales = perfil.mvpTotales || 0;
       const versusJugados = perfil.versusJugados || 0;
 
-      // Mención del usuario (aparece en "Nombre")
       const mencionUsuario = `@${usuarioId}`;
 
       const perfilMsg = `┈─˖Ი𐑼⋆ 𝗣𝗲𝗿𝗳𝗶𝗹 𝗷𝘂𝗴𝗮𝗱𝗼𝗿𝗮  
@@ -120,8 +132,6 @@ export default {
         text: perfilMsg.trim(),
         mentions: mentionsFinal
       }, { quoted: msg });
-
-      console.log(`✅ [PERFIL] Enviado con mención: ${mentionsFinal[0]}`);
 
     } catch (e) {
       console.error("❌ [PERFIL ERROR]:", e.message);
