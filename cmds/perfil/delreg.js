@@ -31,23 +31,17 @@ export default {
         }
       }
 
-      // Texto después del comando (por si buscan por nombre)
       let textoCompleto = msg.text || msg.body || '';
       const texto = textoCompleto
         .replace(/^[.\/!#]?(delreg|delperfil|eliminarreg|borrarreg)\s*/i, '')
         .trim();
 
-      // Si no hay mención ni nombre, mostramos instrucciones
       if (menciones.length === 0 && !texto) {
         return msg.reply(`🗑️ *Eliminar registro de jugadora*
 
 *📋 Formas de uso:*
 \`.delreg @jugadora\` → Elimina por mención
 \`.delreg nombre\` → Elimina por nombre
-
-*📌 Ejemplos:*
-\`.delreg @Sofia\`
-\`.delreg Daniel\`
 
 > ⚠️ *Esta acción es permanente.*`);
       }
@@ -58,28 +52,23 @@ export default {
       let perfil = null;
       let usuarioId = null;
 
-      // CASO 1: Si mencionó a alguien
+      // CASO 1: Mención
       if (menciones.length > 0) {
         usuarioId = menciones[0].split('@')[0];
         perfilKey = `perfil_${usuarioId}`;
         perfil = chatData[perfilKey];
-        console.log(`🔍 [DELREG] Buscando por mención: ${usuarioId}`);
       }
-      // CASO 2: Si escribió un nombre
+      // CASO 2: Nombre
       else if (texto) {
         const nombreBuscado = texto.toLowerCase().trim();
-        console.log(`🔍 [DELREG] Buscando por nombre: "${nombreBuscado}"`);
-
         for (const [key, value] of Object.entries(chatData)) {
           if (key.startsWith('perfil_') && value && typeof value === 'object') {
             const nombreP = (value.nombre || '').toLowerCase().trim();
             const nickP = (value.nickFf || '').toLowerCase().trim();
-
             if (nombreP === nombreBuscado || nickP === nombreBuscado) {
               perfil = value;
               perfilKey = key;
               usuarioId = value.id;
-              console.log(`✅ [DELREG] Perfil encontrado: ${key}`);
               break;
             }
           }
@@ -93,7 +82,6 @@ export default {
         return msg.reply(`❌ No se encontró un perfil con el nombre *${texto}*.`);
       }
 
-      // Guardamos los datos antes de eliminar para mostrarlos
       const datosEliminados = {
         nickFf: perfil.nickFf,
         tag: perfil.tag,
@@ -105,22 +93,19 @@ export default {
       };
 
       // ✅ Eliminamos el perfil
-      delete chatData[perfilKey];
-      await db.updateChat(msg.chat, perfilKey, null); // También lo marcamos como null
-      
-      // ✅ Eliminamos también de las participaciones (por si existe)
+      await db.updateChat(msg.chat, perfilKey, null);
+
+      // ✅ Eliminamos también de las participaciones de la semana
       const año = new Date().getFullYear();
       const inicioAño = new Date(año, 0, 1);
       const diasTranscurridos = Math.floor((new Date() - inicioAño) / 86400000);
       const semana = Math.ceil((diasTranscurridos + inicioAño.getDay() + 1) / 7);
       const partiKey = `participacion_semana_${año}_${semana}`;
-      
-      if (chatData[partiKey] && Array.isArray(chatData[partiKey])) {
-        const registrosFiltrados = chatData[partiKey].filter(
-          r => r.id !== usuarioId && r.nombre.toLowerCase() !== datosEliminados.nombre.toLowerCase()
-        );
+
+      const chatDataActualizado = await db.getChat(msg.chat);
+      if (chatDataActualizado[partiKey] && Array.isArray(chatDataActualizado[partiKey])) {
+        const registrosFiltrados = chatDataActualizado[partiKey].filter(r => r.id !== usuarioId);
         await db.updateChat(msg.chat, partiKey, registrosFiltrados);
-        console.log(`🗑️ [DELREG] Eliminado de participaciones también`);
       }
 
       const mentionsFinal = [usuarioId + '@s.whatsapp.net'];
@@ -136,8 +121,6 @@ export default {
 > ⚠️ La jugadora puede volver a registrarse con \`.reg\``,
         mentions: mentionsFinal
       }, { quoted: msg });
-
-      console.log(`✅ [DELREG] Perfil de ${datosEliminados.nombre} eliminado`);
 
     } catch (e) {
       console.error("❌ [DELREG ERROR]:", e.message);
