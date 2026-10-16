@@ -20,58 +20,6 @@ export default async (sock, msg) => {
         deleteCachedMeta(anu.id);
       }
 
-      // ============================================================
-      // ✅ AUTO-ADMIN: Detectar cuando el bot es agregado al grupo
-      // ============================================================
-      if (anu.action === 'add') {
-        try {
-          const botId = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-          const botIdLid = sock.user.lid;
-          const botNumero = botId.split('@')[0];
-
-          // ✅ Verificamos si el bot está entre los nuevos participantes
-          const botFueAgregado = anu.participants.some(p => {
-            const pid = typeof p === 'string' ? p : (p.jid || p.id || p.lid || p.phoneNumber || '');
-            const pnum = pid.split('@')[0].split(':')[0];
-            return pid === botId || pid === botIdLid || pnum === botNumero;
-          });
-
-          if (botFueAgregado) {
-            console.log(chalk.cyan(`🤖 [AUTO-ADMIN] Bot agregado al grupo ${anu.id}`));
-
-            // ✅ Verificamos si el autoadmin está activado
-            const chatAuto = await db.getChat(anu.id);
-            const autoAdminActivo = chatAuto.autoadmin === true;
-
-            if (!autoAdminActivo) {
-              console.log(chalk.gray(`❌ [AUTO-ADMIN] Desactivado en este grupo.`));
-            } else {
-              // ✅ Esperamos a que WhatsApp actualice los permisos
-              await new Promise(res => setTimeout(res, 4000));
-
-              try {
-                await sock.groupParticipantsUpdate(anu.id, [botId], 'promote');
-                console.log(chalk.green(`✅ [AUTO-ADMIN] Bot promocionado a admin en ${anu.id}`));
-
-                await sock.sendMessage(anu.id, {
-                  text: `✅ *Auto-Admin activado*
-
-> 🤖 El bot ha sido promocionado como administrador automáticamente.
-> 💡 Gracias por confiar en nosotros 🫐`
-                });
-              } catch (err) {
-                console.error(chalk.red(`❌ [AUTO-ADMIN] Error al promocionar: ${err.message}`));
-              }
-            }
-          }
-        } catch (e) {
-          console.error(chalk.red(`❌ [AUTO-ADMIN ERROR]: ${e.message}`));
-        }
-      }
-      // ============================================================
-      // FIN AUTO-ADMIN
-      // ============================================================
-
       const metadata = await (async () => {
         const cached = getCachedMeta(anu.id);
         if (cached) return cached;
