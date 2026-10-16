@@ -1,14 +1,12 @@
 import db from "#db"
 
 export default {
-  command: ['everyone', 'all', 'tagall', 'todos'],
+  command: ['todos', 'everyone', 'all', 'tagall'],
   category: 'grupo',
   isAdmin: true,
   botAdmin: true,
-
   run: async ({ msg, sock }) => {
     try {
-      // ✅ Verificamos que sea un grupo
       if (!msg.isGroup) {
         return msg.reply('《✤》 Este comando solo funciona en grupos.');
       }
@@ -25,34 +23,24 @@ export default {
 
       const totalMembers = mentions.length;
 
-      // ✅ Obtenemos el texto del mensaje
-      let textoCompleto = msg.text || msg.body || '';
-      
-      // ✅ Quitamos CUALQUIER comando conocido al inicio (con o sin prefijo)
-      // Esto elimina: .todos, /todos, !todos, #todos, .everyone, .all, .tagall, etc.
-      const textoUsuario = textoCompleto
-        .replace(/^[.\/!#]?(everyone|all|tagall|todos)\s*/i, '')
-        .trim();
+      // ✅ Texto exacto que proporcionaste
+      let tagText = `𖥻 ׁ ׅ 𝑰𝒏𝒗𝒐𝒄𝒂𝒏𝒅𝒐 𝒍𝒖𝒄𝒆𝒄𝒊𝒕𝒂𝒔 🫐 ! ﹒ ◡◡
 
-      // Construimos el mensaje
-      let tagText = `╭─〔 👥 ETIQUETANDO A TODOS 〕─⬣\n`;
-      tagText += `│ 👤 Integrantes: ${totalMembers}\n`;
-      tagText += `╰────────────────⬣\n\n`;
+‧˚꒰🐾୭ ˚. ᵎᵎ𝘓𝘰𝘴 𝘪𝘯𝘷𝘪𝘵𝘰 𝘢 𝘱𝘳𝘦𝘴𝘵𝘢𝘳 𝘢𝘵𝘦𝘯𝘤𝘪ó𝘯 𝘢 𝘴𝘶𝘴 𝘈𝘥𝘮𝘪𝘯𝘴 𝘤𝘥𝘵𝘮
 
-      for (let user of mentions) {
-        tagText += `➤ @${user.split('@')[0]}\n`;
+⊹₊˚‧︵‿₊  𝐵𝑜𝑟𝑛 𝑡𝑜 𝑑𝑖𝑒. ₊‿︵‧˚₊⊹
+
+𝙄𝙉𝙏𝙀𝙂𝙍𝘼𝙉𝙏𝙀𝙎 : \n\n`;
+
+      // Agregamos cada mención
+      for (const user of mentions) {
+        tagText += `﹒⌗ 💙 @${user.split('@')[0]}\n`;
       }
-
-      // ✅ Si el usuario escribió algo DESPUÉS del comando, lo ponemos arriba.
-      // Si no escribió nada, solo mostramos las etiquetas.
-      const finalText = textoUsuario.length > 0
-        ? `${textoUsuario}\n\n${tagText}`
-        : tagText;
 
       await sock.sendMessage(
         msg.chat,
         {
-          text: finalText,
+          text: tagText,
           mentions
         },
         {
@@ -61,8 +49,8 @@ export default {
       );
 
     } catch (e) {
-      console.error("❌ Error en everyone:", e.message);
-      msg.reply(msgglobal);
+      console.error("❌ [TODOS ERROR]:", e.message);
+      msg.reply(msgglobal || '❌ Ocurrió un error al etiquetar.');
     }
   }
 };
