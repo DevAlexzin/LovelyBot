@@ -1,7 +1,6 @@
 import db from "#db";
 import fs from 'fs';
 import path from 'path';
-import { commands } from '../../lib/system/comandos.js';
 import { linksPreview } from '#serialize';
 
 const menuImagePath = path.join(process.cwd(), 'menu.jpeg');
@@ -9,7 +8,7 @@ const menuImagePath = path.join(process.cwd(), 'menu.jpeg');
 export default {
   command: ['allmenu', 'help', 'menu'],
   category: 'info',
-  run: async ({ msg, sock, args, usedPrefix: prefix }) => {
+  run: async ({ msg, sock }) => {
     try {
       const botId = sock?.user?.id?.split(':')[0] + '@s.whatsapp.net' || '';
       if (!botId) return msg.reply('❌ Error: No se pudo obtener el ID del bot.');
@@ -18,11 +17,10 @@ export default {
       const botname = botSettings.namebot || 'Lovely Bot';
       const botname2 = botSettings.namebot2 || 'Lovely';
       const banner = botSettings.banner || '';
-      const owner = botSettings.owner || '';
       const link = 'https://wa.me/+5491172630652';
 
-      // ✅ Encabezado exacto del nuevo menú
-      let menu = `𓈒 𐔌 𝔅𝔬𝔪 𝔡𝔦𝔞, 𝔢𝔰𝔱𝔯𝔢𝔩𝔦𝔫𝔥𝔞𝔰! 𝔄 𝔗𝔢𝔯𝔯𝔞 𝔪𝔞𝔫𝔡𝔞 𝔲𝔪 𝔬𝔦 𝔭𝔞𝔯𝔞 𝔳𝔬𝔠ê𝔰. ✨  ͡꒱ ۫
+      // ✅ MENÚ COMPLETO (texto exacto que proporcionaste)
+      const menu = `𓈒 𐔌 𝔅𝔬𝔪 𝔡𝔦𝔞, 𝔢𝔰𝔱𝔯𝔢𝔩𝔦𝔫𝔥𝔞𝔰! 𝔄 𝔗𝔢𝔯𝔯𝔞 𝔪𝔞𝔫𝔡𝔞 𝔲𝔪 𝔬𝔦 𝔭𝔞𝔯𝔞 𝔳𝔬𝔠ê𝔰. ✨  ͡꒱ ۫
 
 ‎ ˙¡𝘼𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤-𝙢𝙚: 𝙨𝙤𝙪 𝙤 𝙇𝙤𝙫𝙚𝙡𝙮 𝘽𝙤𝙩.🫐 
 
@@ -38,80 +36,105 @@ export default {
 ִֶָ🪽་༘ 𝙏𝙚 𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤 𝙢𝙞 𝙡𝙞𝙨𝙩𝙖 𝙙𝙚 𝙘𝙤𝙢𝙖𝙣𝙙𝙤𝙨
 
 - ꪆ  ❬ ୭ ᵎᵎ 🌊, ݁ ˖Ი𐑼⋆, ˚˖𓍢ִ໋🫐˚, ❭  
-`;
 
-      // ✅ Categorías y emojis organizados
-      const categoriaEmojis = {
-        'anime': '🌊',
-        'grupo': '🧺',
-        'gacha': '🎴',
-        'ia': '🤖',
-        'info': 'ℹ️',
-        'nsfw': '🔞',
-        'profile': '👤',
-        'download': '📥',
-        'search': '🔍',
-        'stickers': '🎨',
-        'economia': '💰',
-        'utils': '🛠️',
-        'sockets': '🔌',
-        'otros': '📦'
-      };
+⤷ ゛ 𝘼𝙣𝙞𝙢𝙚  ˎˊ˗
 
-      const categoriaNombres = {
-        'anime': '𝘼𝙣𝙞𝙢𝙚',
-        'grupo': '𝙂𝙧𝙪𝙥𝙤',
-        'gacha': '𝙂𝙖𝙘𝙝𝙖',
-        'ia': '𝙄𝙖',
-        'info': '𝙄𝙣𝙛𝙤',
-        'nsfw': '𝙉𝙨𝙬',
-        'profile': '𝙋𝙧𝙤𝙛𝙞𝙡𝙚',
-        'download': '𝘿𝙤𝙬𝙣𝙡𝙤𝙖𝙙',
-        'search': '𝙎𝙚𝙖𝙧𝙘𝙝',
-        'stickers': '𝙎𝙩𝙞𝙘𝙠𝙚𝙧𝙨',
-        'economia': '𝙀𝙘𝙤𝙣𝙤𝙢𝙞𝙖',
-        'utils': '𝙐𝙩𝙞𝙡𝙨',
-        'sockets': '𝙎𝙤𝙘𝙠𝙚𝙩𝙨',
-        'otros': '𝙊𝙩𝙧𝙤𝙨'
-      };
+𑣲⋆࣪ ִֶָ🧺 ❭ .comfort + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .thinkhard + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .sniff + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .blowkiss + < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .snuggle < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .bleh < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .clap < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .coffee < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .jump < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .draw < @ >  
+𑣲⋆࣪ ִֶָ🧺 ❭ .dramatic < @ >  
+𑣲⋆࣪ ִֶָ🧺 ❭ .drunk < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .impregnate < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .kiss < @ >  
+𑣲⋆࣪ ִֶָ🧺 ❭ .love  < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .pout < @ >  
+𑣲⋆࣪ ִֶָ🧺 ❭ .punch < @ >  
+𑣲⋆࣪ ִֶָ🧺 ❭ .seduce  < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .hug < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .kill < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .handhold < @ > 
+𑣲⋆࣪ ִֶָ🧺 ❭ .bonk < @ >
 
-      // ✅ Agrupamos los comandos por categoría
-      const categorias = {};
-      for (const cmd of commands) {
-        const cat = (cmd.category || 'otros').toLowerCase();
-        if (!categorias[cat]) categorias[cat] = [];
-        // ✅ Usamos el primer comando del array como principal
-        const nombreCmd = Array.isArray(cmd.command) ? cmd.command[0] : cmd.command;
-        categorias[cat].push({
-          comando: nombreCmd,
-          uso: cmd.uso || cmd.usage || '',
-          desc: cmd.desc || cmd.description || 'Sin descripción'
-        });
-      }
+⤷ ゛𝙂𝙧𝙪𝙥𝙤   ˎˊ˗
 
-      // ✅ Orden personalizado de categorías (como en el menú)
-      const ordenCategorias = ['anime', 'grupo', 'gacha', 'ia', 'info', 'nsfw', 'profile', 'download', 'search', 'stickers', 'economia', 'utils', 'sockets', 'otros'];
+𑣲⋆࣪ ִֶָ🧺 ❭ .bot + < on/off >
+𑣲⋆࣪ ִֶָ🧺 ❭ .promote + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .demote + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .setprimary + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .warn + < @ > + razón 
+𑣲⋆࣪ ִֶָ🧺 ❭ .mute + < @ > + razón 
+𑣲⋆࣪ ִֶָ🧺 ❭ .unmute + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .mutelist
+𑣲⋆࣪ ִֶָ🧺 ❭ .topcount
+𑣲⋆࣪ ִֶָ🧺 ❭ .topmessages
+𑣲⋆࣪ ִֶָ🧺 ❭ .topmensajes
+𑣲⋆࣪ ִֶָ🧺 ❭ .topmsgcount
+𑣲⋆࣪ ִֶָ🧺 ❭ .setwelcome
+𑣲⋆࣪ ִֶָ🧺 ❭ .setbye
+𑣲⋆࣪ ִֶָ🧺 ❭ .gstatus
+𑣲⋆࣪ ִֶָ🧺 ❭ .warns + < @ >
+𑣲⋆࣪ ִֶָ🧺 ❭ .delwarns + < @ > + < número/all >
+𑣲⋆࣪ ִֶָ🧺 ❭ .setwarnlimit + < número >
+𑣲⋆࣪ ִֶָ🧺 ❭ .clear + < delete|views >
+𑣲⋆࣪ ִֶָ🧺 ❭ .setgpbanner
+𑣲⋆࣪ ִֶָ🧺 ❭ .setgpname + < text >
+𑣲⋆࣪ ִֶָ🧺 ❭ .setgpdesc + < text >
+𑣲⋆࣪ ִֶָ🧺 ❭ .closet › .open + < tiempo >
+𑣲⋆࣪ ִֶָ🧺 ❭ .welcome
+𑣲⋆࣪ ִֶָ🧺 ❭ .bienvenidas
+𑣲⋆࣪ ִֶָ🧺 ❭ .antistatus
+𑣲⋆࣪ ִֶָ🧺 ❭ .antiestados
+𑣲⋆࣪ ִֶָ🧺 ❭ .alerts
+𑣲⋆࣪ ִֶָ🧺 ❭ .alertas
+𑣲⋆࣪ ִֶָ🧺 ❭ .gacha
+𑣲⋆࣪ ִֶָ🧺 ❭ .rpg
+𑣲⋆࣪ ִֶָ🧺 ❭ .economy
+𑣲⋆࣪ ִֶָ🧺 ❭ .economia
+𑣲⋆࣪ ִֶָ🧺 ❭ .adminonly
+𑣲⋆࣪ ִֶָ🧺 ❭ .onlyadmin
+𑣲⋆࣪ ִֶָ🧺 ❭ .antilinks
+𑣲⋆࣪ ִֶָ🧺 ❭ .antilink
+𑣲⋆࣪ ִֶָ🧺 ❭ .antienlaces
+𑣲⋆࣪ ִֶָ🧺 ❭ .goodbye
+𑣲⋆࣪ ִֶָ🧺 ❭ .despedidas
+𑣲⋆࣪ ִֶָ🧺 ❭ .bye + < on|off >
+𑣲⋆࣪ ִֶָ🧺 ❭ .groupinfo › .gp 
+𑣲⋆࣪ ִֶָ🧺 ❭ .tag › .hidetag + < text >
+𑣲⋆࣪ ִֶָ🧺 ❭ .kick + < @ >
 
-      // ✅ Construimos el menú por categoría
-      for (const cat of ordenCategorias) {
-        if (!categorias[cat]) continue;
+⤷ ゛ 𝙄𝙖  ˎˊ˗
 
-        const emoji = categoriaEmojis[cat] || '📦';
-        const nombre = categoriaNombres[cat] || cat.toUpperCase();
+𑣲⋆࣪ ִֶָ🧺 ❭ .ia + <query>
+𑣲⋆࣪ ִֶָ🧺 ❭ .chatgpt + <query>
+𑣲⋆࣪ ִֶָ🧺 ❭ .nano + <prompt>
+𑣲⋆࣪ ִֶָ🧺 ❭ .nanobanana + <prompt>
 
-        menu += `\n⤷ ゛ ${emoji} ${nombre}  ˎˊ˗\n\n`;
+⤷ ゛ 𝙄𝙣𝙛𝙤  ˎˊ˗
 
-        // Ordenamos alfabéticamente
-        categorias[cat].sort((a, b) => a.comando.localeCompare(b.comando));
+𑣲⋆࣪ ִֶָ🧺 ❭ .allmenu + <category>
+𑣲⋆࣪ ִֶָ🧺 ❭ .menu + <category>
+𑣲⋆࣪ ִֶָ🧺 ❭ .help + <category>
+𑣲⋆࣪ ִֶָ🧺 ❭ .infobot
+𑣲⋆࣪ ִֶָ🧺 ❭ .infosocket
+𑣲⋆࣪ ִֶָ🧺 ❭ .info
+𑣲⋆࣪ ִֶָ🧺 ❭ .ping
+𑣲⋆࣪ ִֶָ🧺 ❭ .p
+𑣲⋆࣪ ִֶָ🧺 ❭ .report + <error>
+𑣲⋆࣪ ִֶָ🧺 ❭ .reporte + <error>
+𑣲⋆࣪ ִֶָ🧺 ❭ .status
+𑣲⋆࣪ ִֶָ🧺 ❭ .sug + <suggest>
+𑣲⋆࣪ ִֶָ🧺 ❭ .suggest + <suggest>
+𑣲⋆࣪ ִֶָ🧺 ❭ .invitar + <link>
+𑣲⋆࣪ ִֶָ🧺 ❭ .invite + <link>
 
-        for (const cmd of categorias[cat]) {
-          const uso = cmd.uso ? ` + < ${cmd.uso} >` : '';
-          menu += `𑣲⋆࣪ ִֶָ🧺 ❭ .${cmd.comando}${uso}\n`;
-        }
-      }
-
-      // ✅ Pie del menú
-      menu += `\n⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹`;
+⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹`;
 
       const contextBase = {
         mentionedJid: null,
