@@ -39,7 +39,7 @@ function normalizePhone(input) {
 
 console.log(chalk.blue.bold('\n INICIANDO SISTEMA ...'))
 console.log(chalk.cyan(`
-      Princess | Bot
+      Lovely | Bot
      Powered by Alexander ~
 `))
 
