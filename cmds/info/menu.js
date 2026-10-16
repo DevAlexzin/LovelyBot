@@ -11,137 +11,107 @@ export default {
   category: 'info',
   run: async ({ msg, sock, args, usedPrefix: prefix }) => {
     try {
-      // ✅ Verificamos que el bot tenga usuario
       const botId = sock?.user?.id?.split(':')[0] + '@s.whatsapp.net' || '';
-      if (!botId) {
-        return msg.reply('❌ Error: No se pudo obtener el ID del bot.');
-      }
+      if (!botId) return msg.reply('❌ Error: No se pudo obtener el ID del bot.');
 
       const botSettings = await db.getSettings(botId);
-      const botname = botSettings.namebot || 'Bot';
-      const botname2 = botSettings.namebot2 || 'Bot';
+      const botname = botSettings.namebot || 'Lovely Bot';
+      const botname2 = botSettings.namebot2 || 'Lovely';
       const banner = botSettings.banner || '';
       const owner = botSettings.owner || '';
-      const link = 'https://web.stellarwa.xyz/home';
+      const link = 'https://wa.me/+5491172630652';
 
-      const oficialId = global?.sock
-        ? global.sock.user.id.split(':')[0] + '@s.whatsapp.net'
-        : '';
-      const isOficialBot = botId === oficialId;
-      const botType = isOficialBot ? '𝐎𝐰𝐧𝐞𝐫' : '𝐒𝐮𝐛-𝐁𝐨𝐭';
+      // ✅ Encabezado exacto del nuevo menú
+      let menu = `𓈒 𐔌 𝔅𝔬𝔪 𝔡𝔦𝔞, 𝔢𝔰𝔱𝔯𝔢𝔩𝔦𝔫𝔥𝔞𝔰! 𝔄 𝔗𝔢𝔯𝔯𝔞 𝔪𝔞𝔫𝔡𝔞 𝔲𝔪 𝔬𝔦 𝔭𝔞𝔯𝔞 𝔳𝔬𝔠ê𝔰. ✨  ͡꒱ ۫
 
-      // ✅ Obtenemos el nombre del owner (si es un ID válido)
-      let ownerName = '𝐎𝐜𝐮𝐥𝐭𝐨 𝐩𝐨𝐫 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝';
-      if (owner) {
-        try {
-          if (!isNaN(owner.replace(/@s\.whatsapp\.net$/, ''))) {
-            const own = await db.getUser(owner);
-            ownerName = own?.name || 'Sin nombre';
-          } else {
-            ownerName = owner;
-          }
-        } catch (e) {
-          ownerName = '𝐎𝐜𝐮𝐥𝐭𝐨 𝐩𝐨𝐫 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝';
-        }
-      }
-
-      // ✅ Texto del menú (corregido)
-      let menu = `‎   ── ˙ ¡𝗛𝗲𝗹𝗹𝗼, 𝗵𝗶, 𝗜'𝗺 🫐 𝙇𝙤𝙫𝙚𝙡𝙮 (*𝕰𝖒𝖞*) .
-ִֶָ🪽་༘ 𝙏𝙚 𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤 𝙢𝙞 𝙡𝙞𝙨𝙩𝙖 𝙙𝙚 𝙘𝙤𝙢𝙖𝙣𝙙𝙤𝙨 
+‎ ˙¡𝘼𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤-𝙢𝙚: 𝙨𝙤𝙪 𝙤 𝙇𝙤𝙫𝙚𝙡𝙮 𝘽𝙤𝙩.🫐 
 
 ⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹
 
 𖥻 ׁ ׅ 𝙇𝙞𝙣𝙠  ! ﹒ ◡◡
-𑣲　https://wa.me/+5491172630652
+𑣲　${link}
 𖥻 ׁ ׅ 𝘿𝙚𝙫𝙚𝙡𝙤𝙥𝙚𝙧  ! ﹒ ◡◡
-𑣲　${ownerName}
+𑣲　Oculto por privacidad
 
 . ݁₊ ⊹ . ݁ ⟡ ݁ . ⊹ ₊ ݁.
 
-${String.fromCharCode(8206).repeat(4000)}`;
+ִֶָ🪽་༘ 𝙏𝙚 𝙥𝙧𝙚𝙨𝙚𝙣𝙩𝙤 𝙢𝙞 𝙡𝙞𝙨𝙩𝙖 𝙙𝙚 𝙘𝙤𝙢𝙖𝙣𝙙𝙤𝙨
 
-      const categoryArg = args[0]?.toLowerCase();
-      const categories = {};
+- ꪆ  ❬ ୭ ᵎᵎ 🌊, ݁ ˖Ი𐑼⋆, ˚˖𓍢ִ໋🫐˚, ❭  
+`;
 
-      for (const command of commands) {
-        const category = command.category || 'otros';
-        if (!categories[category]) categories[category] = [];
-        categories[category].push(command);
-      }
+      // ✅ Categorías y emojis organizados
+      const categoriaEmojis = {
+        'anime': '🌊',
+        'grupo': '🧺',
+        'gacha': '🎴',
+        'ia': '🤖',
+        'info': 'ℹ️',
+        'nsfw': '🔞',
+        'profile': '👤',
+        'download': '📥',
+        'search': '🔍',
+        'stickers': '🎨',
+        'economia': '💰',
+        'utils': '🛠️',
+        'sockets': '🔌',
+        'otros': '📦'
+      };
 
-      const categoryEmojisList = [
-        "୭ ᵎᵎ 🧁, ݁ ˖Ი𐑼⋆, ˚˖𓍢ִ໋🦢˚,"
-      ];
-
-      const categoryNameMap = {
+      const categoriaNombres = {
         'anime': '𝘼𝙣𝙞𝙢𝙚',
-        'download': '𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱',
-        'economia': '𝙀𝙘𝙤𝙣𝙤𝙢𝙞𝙖',
-        'gacha': '𝙂𝙖𝙘𝙝𝙖',
         'grupo': '𝙂𝙧𝙪𝙥𝙤',
-        'ia': '𝙄𝘼',
+        'gacha': '𝙂𝙖𝙘𝙝𝙖',
+        'ia': '𝙄𝙖',
         'info': '𝙄𝙣𝙛𝙤',
-        'nsfw': '𝙉𝙨𝙛𝙬',
-        'profile': '𝐏𝙧𝙤𝙛𝙞𝙡𝙚',
+        'nsfw': '𝙉𝙨𝙬',
+        'profile': '𝙋𝙧𝙤𝙛𝙞𝙡𝙚',
+        'download': '𝘿𝙤𝙬𝙣𝙡𝙤𝙖𝙙',
         'search': '𝙎𝙚𝙖𝙧𝙘𝙝',
-        'sockets': '𝙎𝙤𝙘𝙠𝙚𝙩',
-        'stickers': '𝙎𝙩𝙞𝙘𝙠𝙚𝙧',
-        'utils': '𝙐𝙩𝙞𝙡𝙨'
+        'stickers': '𝙎𝙩𝙞𝙘𝙠𝙚𝙧𝙨',
+        'economia': '𝙀𝙘𝙤𝙣𝙤𝙢𝙞𝙖',
+        'utils': '𝙐𝙩𝙞𝙡𝙨',
+        'sockets': '𝙎𝙤𝙘𝙠𝙚𝙩𝙨',
+        'otros': '𝙊𝙩𝙧𝙤𝙨'
       };
 
-      const categoryDescriptions = {
-        'anime': 'Comandos de reacciones de anime.',
-        'download': 'Comandos de Descargas para descargar archivos de varias fuentes.',
-        'economia': 'Comandos de Economía para ganar dinero y divertirte con tus amigos.',
-        'gacha': 'Comandos de Gacha para reclamar y intercambiar personajes.',
-        'grupo': 'Comandos para administradores de grupos.',
-        'ia': 'Comandos de Inteligencia Artificial.',
-        'info': 'Comandos de información general del bot.',
-        'nsfw': 'Comandos NSFW (contenido para adultos).',
-        'profile': 'Comandos de Perfil para ver y configurar tu perfil.',
-        'search': 'Comandos de búsqueda en diferentes plataformas.',
-        'sockets': 'Comandos para registrar tu propio bot.',
-        'stickers': 'Comandos de *Stickers* para crear y gestionar stickers.',
-        'utils': 'Comandos de Utilidades para el día a día del bot.'
-      };
-
-      const availableCategories = Object.keys(categories).map(c => c.toLowerCase());
-
-      if (categoryArg && !availableCategories.includes(categoryArg)) {
-        return msg.reply(
-          `.ᐟ🫐 La categoría *${categoryArg}* no fue encontrada.\n\n> Categorías disponibles:\n${availableCategories.map(c => `› ${prefix}${c}`).join('\n')}`
-        );
-      }
-
-      let emojiIndex = 0;
-      for (const [category, cmds] of Object.entries(categories)) {
-        if (categoryArg && category.toLowerCase() !== categoryArg) continue;
-
-        const catName = categoryNameMap[category.toLowerCase()] 
-          || category.charAt(0).toUpperCase() + category.slice(1);
-        const catEmoji = categoryEmojisList[emojiIndex % categoryEmojisList.length];
-        emojiIndex++;
-        const description = categoryDescriptions[category.toLowerCase()] 
-          || `Comandos de ${catName}.`;
-
-        menu += `\n- ꪆ  ❬ ${catEmoji} ❭  *\`${catName}\`*  .✦ ݁˖    *;*\n`;
-        menu += `> 𑣲⋆࣪ ִֶָ ${description}\n\n`;
-
-        cmds.forEach((cmd) => {
-          // ✅ Corregido: usamos cmd.command en lugar de cmd.alias
-          const aliases = (cmd.command || [])
-            .map((a) => {
-              const aliasClean = a.split(/[\/#!+.\-]+/).pop().toLowerCase();
-              return `${prefix}${aliasClean}`;
-            })
-            .join(' › ');
-          
-          menu += `ִֶָ🫐་༘ ${aliases}${cmd.uso ? ` + ${cmd.uso}` : ''}\n`;
-          menu += `> ── 𑁪ㅤׅㅤ۫ _${cmd.desc || 'Sin descripción'}_\n`;
+      // ✅ Agrupamos los comandos por categoría
+      const categorias = {};
+      for (const cmd of commands) {
+        const cat = (cmd.category || 'otros').toLowerCase();
+        if (!categorias[cat]) categorias[cat] = [];
+        // ✅ Usamos el primer comando del array como principal
+        const nombreCmd = Array.isArray(cmd.command) ? cmd.command[0] : cmd.command;
+        categorias[cat].push({
+          comando: nombreCmd,
+          uso: cmd.uso || cmd.usage || '',
+          desc: cmd.desc || cmd.description || 'Sin descripción'
         });
-
-        menu += `\n ㅤׅㅤ۫ㅤㅤ      ﹙ .ᐟ﹚ㅤׅㅤㅤ˚ㅤ\n`;
       }
+
+      // ✅ Orden personalizado de categorías (como en el menú)
+      const ordenCategorias = ['anime', 'grupo', 'gacha', 'ia', 'info', 'nsfw', 'profile', 'download', 'search', 'stickers', 'economia', 'utils', 'sockets', 'otros'];
+
+      // ✅ Construimos el menú por categoría
+      for (const cat of ordenCategorias) {
+        if (!categorias[cat]) continue;
+
+        const emoji = categoriaEmojis[cat] || '📦';
+        const nombre = categoriaNombres[cat] || cat.toUpperCase();
+
+        menu += `\n⤷ ゛ ${emoji} ${nombre}  ˎˊ˗\n\n`;
+
+        // Ordenamos alfabéticamente
+        categorias[cat].sort((a, b) => a.comando.localeCompare(b.comando));
+
+        for (const cmd of categorias[cat]) {
+          const uso = cmd.uso ? ` + < ${cmd.uso} >` : '';
+          menu += `𑣲⋆࣪ ִֶָ🧺 ❭ .${cmd.comando}${uso}\n`;
+        }
+      }
+
+      // ✅ Pie del menú
+      menu += `\n⊹₊˚‧︵‿₊୨ᰔ୧₊‿︵‧˚₊⊹`;
 
       const contextBase = {
         mentionedJid: null,
