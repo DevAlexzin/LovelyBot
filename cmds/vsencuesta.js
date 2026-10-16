@@ -23,24 +23,24 @@ export default {
       if (!contenido) {
         const instrucciones = `📊 *Encuestas de Versus*
 
-*📋 Formatos válidos:*
+*📋 Formato:*
+\`.vsencuesta [opciones] texto | [opciones] texto2\`
 
-*Opción 1:* Separar con \`|\`
-\`.vsencuesta texto1 | texto2 | texto3\`
+*📌 Ejemplos:*
 
-*Opción 2:* Separar con \`;\`
-\`.vsencuesta texto1 ; texto2 ; texto3\`
+*Con opciones personalizadas:*
+\`.vsencuesta [Sí,No] ¿Te gusta el versus?\`
 
-*Opción 3:* Separar con saltos de línea (uno por uno)
-\`.vsencuesta
-texto1
-texto2
-texto3\`
+*Múltiples encuestas con opciones diferentes:*
+\`.vsencuesta [Azul,Rosa,Morado] ¿Qué color? | [A,B,C,D] ¿Qué equipo?\`
 
-*📌 Ejemplo:*
-\`.vsencuesta 𝙑𝙚𝙧𝙨𝙪𝙨 : Mixto / ⤷ by moviles / ⏳01🇦🇷 / ᯓ𝙍𝙞𝙫𝙖𝙡 : @blazinglegacy.fem | 𝙑𝙚𝙧𝙨𝙪𝙨 : Mixto / ⤷ by moviles / ⏳01🇦🇷 / ᯓ𝙍𝙞𝙫𝙖𝙡 : @blazinglegacy.fem\`
+*Sin opciones (usa las por defecto):*
+\`.vsencuesta ¿Te gusta el versus?\`
 
-> ⚠️ *Cada bloque crea UNA encuesta diferente.*`;
+*📝 Notas:*
+> • Las opciones van entre \`[ ]\` separadas por coma
+> • Cada encuesta se separa con \`|\`
+> • Si no pones opciones, usa: ✅ Sí / ❌ No / 🤔 Tal vez`;
 
         return msg.reply(instrucciones);
       }
@@ -48,45 +48,53 @@ texto3\`
       // ✅ Detección de bloques con MÚLTIPLES separadores
       let bloques = [];
 
-      // 1. Si contiene "|" lo usamos como separador principal
       if (contenido.includes('|')) {
         bloques = contenido.split('|');
       }
-      // 2. Si contiene ";" lo usamos como separador
       else if (contenido.includes(';')) {
         bloques = contenido.split(';');
       }
-      // 3. Si contiene saltos de línea (2 o más), los usamos
       else if (contenido.split('\n').length > 1) {
-        // Agrupamos cada 2-3 líneas como un bloque (por si el usuario escribe uno por línea)
-        const lineas = contenido.split('\n').map(l => l.trim()).filter(l => l !== '');
-        bloques = lineas;
+        bloques = contenido.split('\n').map(l => l.trim()).filter(l => l !== '');
       }
-      // 4. Si nada funciona, tomamos todo como 1 solo bloque
       else {
         bloques = [contenido];
       }
 
-      // Limpiamos bloques
-      bloques = bloques
-        .map(b => b.trim())
-        .filter(b => b !== '');
+      bloques = bloques.map(b => b.trim()).filter(b => b !== '');
 
       if (bloques.length === 0) {
         return msg.reply('❌ No se detectaron bloques de encuesta.');
       }
 
       console.log(`📊 [VSENCUESTA] ${bloques.length} bloque(s) detectado(s)`);
-      bloques.forEach((b, i) => {
-        console.log(`   Bloque ${i + 1}:`, b.slice(0, 80) + (b.length > 80 ? '...' : ''));
-      });
 
       let enviadas = 0;
 
       for (let i = 0; i < bloques.length; i++) {
-        const bloque = bloques[i];
+        let bloque = bloques[i];
 
-        // ✅ Formateamos el bloque: reemplazamos "/" por saltos de línea
+        // ✅ Buscamos opciones personalizadas entre [...]
+        let opciones = null;
+        const matchOpciones = bloque.match(/^\[([^\]]+)\]\s*/);
+
+        if (matchOpciones) {
+          // Extraemos las opciones
+          opciones = matchOpciones[1]
+            .split(',')
+            .map(op => op.trim())
+            .filter(op => op !== '');
+
+          // Quitamos las opciones del texto
+          bloque = bloque.replace(/^\[([^\]]+)\]\s*/, '').trim();
+        }
+
+        // ✅ Si no hay opciones personalizadas, usamos las por defecto
+        if (!opciones || opciones.length === 0) {
+          opciones = ['✅ Sí', '❌ No', '🤔 Tal vez'];
+        }
+
+        // ✅ Formateamos el texto del bloque
         const textoFormateado = bloque
           .split('/')
           .map(linea => linea.trim())
@@ -98,21 +106,22 @@ texto3\`
           continue;
         }
 
-        console.log(`📤 [VSENCUESTA] Enviando encuesta ${i + 1}:`, textoFormateado.slice(0, 100));
+        console.log(`📤 [VSENCUESTA] Encuesta ${i + 1}:`);
+        console.log(`   Texto: ${textoFormateado.slice(0, 100)}`);
+        console.log(`   Opciones: ${opciones.join(' | ')}`);
 
         try {
           await sock.sendMessage(msg.chat, {
             poll: {
               name: textoFormateado,
-              values: ['✅ Sí', '❌ No', '🤔 Tal vez'],
+              values: opciones,
               selectableCount: 1
             }
           });
 
           enviadas++;
-          console.log(`✅ [VSENCUESTA] Encuesta ${i + 1} enviada correctamente`);
+          console.log(`✅ [VSENCUESTA] Encuesta ${i + 1} enviada`);
 
-          // Pausa entre encuestas
           if (i < bloques.length - 1) {
             await new Promise(res => setTimeout(res, 2000));
           }
@@ -124,7 +133,7 @@ texto3\`
 
       await msg.reply(`✅ *Encuestas enviadas*
 
-> 📊 Total enviadas: ${enviadas} de ${bloques.length}`);
+> 📊 Total: ${enviadas} de ${bloques.length}`);
 
     } catch (e) {
       console.error("❌ [VSENCUESTA ERROR]:", e.message);
