@@ -26,11 +26,11 @@ export default {
 
       // ✅ 2. Analizar el formato del texto
       if (!textoLimpio && !textoCitado) {
-        return msg.reply(`🐼 *Ingrese un texto para realizar su sticker quotly.*\n\n> Ejemplo: \`.qc Hola mundo\`\n> Ejemplo: \`.qc @user Jota / Hola\`\n> Ejemplo: \`.qc Jota / Hola\``);
+        return msg.reply(`🐼 *Ingrese un texto para realizar su sticker quotly.*\n\n> Ejemplo: \`.qc Hola mundo\`\n> Ejemplo: \`.qc @user Anónimo / Hola\`\n> Ejemplo: \`.qc Anónimo / Hola\``);
       }
 
       if (tieneMencion && textoLimpio.includes('/')) {
-        // Formato: .qc @user Nombre / Texto
+        // Formato: .qc @user Anónimo / Texto
         const partes = textoLimpio.split('/');
         authorName = partes[0].replace(/@\d+/g, '').trim() || 'Anónimo';
         text = partes.slice(1).join('/').trim();
@@ -40,7 +40,7 @@ export default {
         } catch { /* Usa la default */ }
 
       } else if (!tieneMencion && textoLimpio.includes('/')) {
-        // Formato: .qc Nombre / Texto
+        // Formato: .qc Anónimo / Texto
         const partes = textoLimpio.split('/');
         authorName = partes[0].trim() || 'Anónimo';
         text = partes.slice(1).join('/').trim();
@@ -65,7 +65,7 @@ export default {
         } catch { /* Usa la default */ }
 
       } else {
-        return msg.reply("🐼 *Formato inválido.*\n\n> Usa: `.qc Hola mundo`\n> Usa: `.qc @user Nombre / Texto`\n> Usa: `.qc Nombre / Texto`");
+        return msg.reply("🐼 *Formato inválido.*\n\n> Usa: `.qc Hola mundo`\n> Usa: `.qc @user Anónimo / Texto`\n> Usa: `.qc Anónimo / Texto`");
       }
 
       // ✅ 3. Validaciones
@@ -113,18 +113,39 @@ export default {
       // ✅ 7. Convertir base64 a Buffer
       let buffer = Buffer.from(json.data.result.image, 'base64');
 
-      // ✅ 8. Convertir a WEBP (formato sticker) con sharp
-      buffer = await sharp(buffer)
+      // ✅ 8. CREAR LA MARCA DE AGUA (Developer oculto)
+      // Hacemos que la imagen sea un poco más alta para que quepa el texto abajo
+      const imgOriginal = sharp(buffer);
+      const metadata = await imgOriginal.metadata();
+      
+      const nuevoAlto = metadata.height + 60; // Agregamos 60px abajo
+
+      // Creamos el SVG con el texto
+      const svgMarca = `
+        <svg width="${metadata.width}" height="${nuevoAlto}" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100%" height="100%" fill="#000000" />
+          <image href="data:image/png;base64,${buffer.toString('base64')}" x="0" y="0" width="${metadata.width}" height="${metadata.height}" />
+          <text x="50%" y="${metadata.height + 35}" font-family="Arial, sans-serif" font-size="18" fill="#888888" text-anchor="middle" dominant-baseline="middle">Developer oculto por privacidad</text>
+        </svg>
+      `;
+
+      // Convertimos el SVG a buffer final
+      let bufferFinal = await sharp(Buffer.from(svgMarca))
+        .png()
+        .toBuffer();
+
+      // ✅ 9. Convertir a WEBP (formato sticker)
+      bufferFinal = await sharp(bufferFinal)
         .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .webp({ quality: 85, effort: 4 })
         .toBuffer();
 
-      // ✅ 9. Enviar el sticker
+      // ✅ 10. Enviar el sticker
       await sock.sendMessage(msg.chat, { 
-        sticker: buffer 
+        sticker: bufferFinal 
       }, { quoted: msg });
 
-      // ✅ 10. Reacción de éxito
+      // ✅ 11. Reacción de éxito
       await sock.sendMessage(msg.chat, { react: { text: "✅", key: msg.key } });
 
     } catch (e) {
