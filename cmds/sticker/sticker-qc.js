@@ -122,18 +122,18 @@ export default {
       let buffer = Buffer.from(json.data.result.image, 'base64');
 
       // ✅ 8. Convertir a WEBP (formato sticker)
-      // Nota: Ya no le agregamos texto abajo en la imagen, el nombre se pone en el paquete.
       buffer = await sharp(buffer)
         .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .webp({ quality: 85, effort: 4 })
         .toBuffer();
 
-      // ✅ 9. Enviar el sticker con el nombre en el paquete
+      // ✅ 9. Enviar el sticker con el nombre EXACTO
       await sock.sendMessage(msg.chat, { 
         sticker: buffer,
-        // 📌 Aquí se define el nombre que aparecerá al guardar el sticker
+        // 📌 packname es el nombre del paquete
         packname: 'Developer oculto por privacidad',
-        author: 'Princess Bot'
+        // 📌 Si no quieres que se vea el autor abajo del nombre, puedes quitarlo o dejarlo así
+        author: 'Princess Bot' 
       }, { quoted: msg });
 
       // ✅ 10. Reacción de éxito
