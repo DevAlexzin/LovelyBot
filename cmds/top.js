@@ -11,7 +11,7 @@ export default {
 
       // ✅ 1. Verificamos que se haya ingresado un texto
       if (!text || text.trim() === '') {
-        return msg.reply(`🏆 *Generador de Top 10*
+        return msg.reply(`🏆 *Generador de Top*
 
 > Ingresa un tema para crear el top.
 *Ejemplo:* \`.top mejores jugadoras\``);
@@ -19,21 +19,23 @@ export default {
 
       const tema = text.trim();
 
-      // ✅ 2. Filtramos participantes para evitar que el bot o usuarios sin ID salgan en la lista
+      // ✅ 2. Filtramos participantes (evitamos al bot y usuarios sin ID)
       const usuariosValidos = participants.filter(p => p.id && p.id !== sock.user.id);
       
-      if (usuariosValidos.length < 10) {
-        return msg.reply('❌ Se necesitan al menos 10 personas en el grupo para armar el Top 10.');
+      // ✅ 3. Ahora solo pedimos un mínimo de 2 personas para que tenga sentido
+      if (usuariosValidos.length < 2) {
+        return msg.reply('❌ Se necesitan al menos 2 personas en el grupo para armar el Top.');
       }
 
-      // ✅ 3. Mezclamos los usuarios y tomamos los primeros 10
-      const usuariosMezclados = usuariosValidos.sort(() => 0.5 - Math.random()).slice(0, 10);
+      // ✅ 4. Mezclamos los usuarios y tomamos hasta 10 (o los que haya)
+      const cantidad = Math.min(10, usuariosValidos.length);
+      const usuariosMezclados = usuariosValidos.sort(() => 0.5 - Math.random()).slice(0, cantidad);
 
-      // ✅ 4. Lista de emojis para el título (aleatorio)
+      // ✅ 5. Lista de emojis para el título (aleatorio)
       const emojisTitulo = ['🔥', '✨', '🥇', '💫', '🌟', '🏆', '👑', '💥'];
       const emojiElegido = emojisTitulo[Math.floor(Math.random() * emojisTitulo.length)];
 
-      // ✅ 5. Construimos la lista
+      // ✅ 6. Construimos la lista
       let listaTop = '';
       const menciones = [];
 
@@ -57,8 +59,8 @@ export default {
         listaTop += `${medalla} ${nombre}\n`;
       });
 
-      // ✅ 6. Armamos el mensaje final con un diseño limpio
-      const mensajeFinal = `🏆 *TOP 10: ${tema.toUpperCase()}* ${emojiElegido}
+      // ✅ 7. Armamos el mensaje final
+      const mensajeFinal = `🏆 *TOP ${cantidad}: ${tema.toUpperCase()}* ${emojiElegido}
 
 ━━━━━━━━━━━━━━━
 
@@ -67,7 +69,7 @@ ${listaTop}
 
 > 💡 *Ranking generado aleatoriamente*`;
 
-      // ✅ 7. Enviamos el mensaje con las menciones para que se vean azules
+      // ✅ 8. Enviamos el mensaje con las menciones
       await sock.sendMessage(msg.chat, {
         text: mensajeFinal,
         mentions: menciones
@@ -75,7 +77,7 @@ ${listaTop}
 
     } catch (e) {
       console.error("❌ [TOP ERROR]:", e.message);
-      msg.reply('❌ Ocurrió un error al generar el Top 10.');
+      msg.reply('❌ Ocurrió un error al generar el Top.');
     }
   }
 };
